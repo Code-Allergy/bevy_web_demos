@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use bevy_rapier3d::prelude::*;
 use wasm_bindgen::prelude::*;
-use web_demos::{get_window, player};
+use web_demos::{player, GameControlPlugin};
 
 
 #[derive(Component)]
@@ -43,14 +43,14 @@ const PLANE_SIZE: f32 = 20.0;
 const ENEMY_SIZE: f32 = 0.5;
 
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String {
     "Physics Demo - Ball Pit".to_string()
 }
 
 
-
-fn main() {
+#[wasm_bindgen(js_name = startGame)]
+pub fn start_game() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             // primary_window: Some(get_window()),
@@ -64,12 +64,17 @@ fn main() {
         // .add_systems(Update, print_ball_altitude)
         // .add_systems(Update, exit_on_escape)
         .add_plugins(player::PlayerPlugin)
+        .add_plugins(GameControlPlugin)
         // .insert_resource(GameState::default())
         // .add_systems(Startup, setup)
         //     .add_systems(Update, (exit_on_escape, spawn_enemies, check_bullet_enemy_collision, display_points))
         // .add_systems(Update, (exit_on_escape, move_player, camera_follow, spawn_enemies, check_bullet_enemy_collision, display_points))
         .run();
-    }
+}
+
+fn main() {
+    // start_game();
+}
 
 
 fn setup_physics(mut commands: Commands,

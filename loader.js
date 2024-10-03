@@ -21,29 +21,34 @@ fetch('./modules.txt')
     });
 
 async function loadWasmModule(modulePath) {
-    const { default: init, demo_name } = await import(modulePath);
+    // const { default: init, demo_name, startGame } = await import(modulePath);
 
     // Initialize the module
-    await init().catch((error) => {
-      if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
-        throw error;
-      }
-    });
+    // await init().catch((error) => {
+    //   if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
+    //     throw error;
+    //   }
+    // });
+    if (this.wasmContext !== undefined) {
+        destroy();
+    }
+
+    this.wasmContext = await import(modulePath);
+    await this.wasmContext.default();
 
     // get the title and place the demo name in the title
-    document.getElementById('demo_title').innerText = demo_name();
-
-    console.log(demo_name());
+    document.getElementById('demo_title').innerText = this.wasmContext.demoName();
     console.log(`${modulePath} loaded`);
+    this.wasmContext.startGame();
 }
 
 // Function to remove the current canvas and spawn a new one
 function resetCanvas() {
 // Remove the first canvas found on the page
-    // const oldCanvas = document.querySelector('canvas');
-    // if (oldCanvas) {
-    //     oldCanvas.remove(); // Remove the canvas element
-    // }
+    const oldCanvas = document.querySelector('canvas');
+    if (oldCanvas) {
+        oldCanvas.remove(); // Remove the canvas element
+    }
 
     // // Create a new canvas element
     // const canvas = document.createElement('canvas');
@@ -71,3 +76,9 @@ document.getElementById('backward').addEventListener('click', () => {
     currentModuleIndex = (currentModuleIndex - 1 + wasm_modules.length) % wasm_modules.length;
     loadCurrentModule(); // Load the current module
 });
+
+function destroy() {
+    this.wasmContext?.stopGame?.();
+    this.wasmContext = undefined;
+    this.gameInitialized = false;
+}
