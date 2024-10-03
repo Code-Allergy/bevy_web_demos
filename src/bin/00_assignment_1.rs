@@ -1,14 +1,26 @@
 //! Illustrates the use of vertex colors.
+//! The cube rotates around the y-axis and moves up and down.
+
+// only used for exporting the demo name, and packaging the wasm
+use wasm_bindgen::prelude::*;
+
 
 use bevy::{prelude::*, render::mesh::VertexAttributeValues};
-
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            // primary_window: Some(get_window()),
+        ..default()
+        }))
         .add_systems(Startup, setup)
         .add_systems(Update, rotate_cube)
         .add_systems(Update, (move_cube_up_and_down, update_colour))
         .run();
+}
+
+#[wasm_bindgen]
+pub fn demo_name() -> String {
+    "Assignment 1: Replication".to_string()
 }
 
 #[derive(Component)]

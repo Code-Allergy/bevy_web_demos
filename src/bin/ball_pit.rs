@@ -1,0 +1,206 @@
+use bevy::prelude::*;
+
+use bevy_rapier3d::prelude::*;
+use wasm_bindgen::prelude::*;
+use web_demos::{get_window, player};
+
+
+#[derive(Component)]
+struct Player;
+
+#[derive(Component)]
+struct Speed(f32);
+
+#[derive(Bundle)]
+struct PlayerBundle {
+    player: Player,
+    pbr_bundle: PbrBundle,
+    speed: Speed,
+}
+
+#[derive(Component)]
+struct Bullet {
+    speed: f32,
+}
+
+#[derive(Bundle)]
+struct BulletBundle {
+    bullet: Bullet,
+    pbr_bundle: PbrBundle,
+}
+
+#[derive(Component)]
+struct Enemy;
+
+#[derive(Bundle)]
+struct EnemyBundle {
+    enemy: Enemy,
+    pbr_bundle: PbrBundle,
+}
+
+
+const PLANE_SIZE: f32 = 20.0;
+const ENEMY_SIZE: f32 = 0.5;
+
+
+#[wasm_bindgen]
+pub fn demo_name() -> String {
+    "Physics Demo - Ball Pit".to_string()
+}
+
+
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            // primary_window: Some(get_window()),
+            ..default()
+            }))
+        // .add_plugins(BulletPlugin)
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        // .add_plugins(RapierDebugRenderPlugin::default())
+        // .add_systems(Startup, setup_graphics)
+        .add_systems(Startup, setup_physics)
+        // .add_systems(Update, print_ball_altitude)
+        // .add_systems(Update, exit_on_escape)
+        .add_plugins(player::PlayerPlugin)
+        // .insert_resource(GameState::default())
+        // .add_systems(Startup, setup)
+        //     .add_systems(Update, (exit_on_escape, spawn_enemies, check_bullet_enemy_collision, display_points))
+        // .add_systems(Update, (exit_on_escape, move_player, camera_follow, spawn_enemies, check_bullet_enemy_collision, display_points))
+        .run();
+    }
+
+
+fn setup_physics(mut commands: Commands,
+                 mut meshes: ResMut<Assets<Mesh>>,
+                 mut materials: ResMut<Assets<StandardMaterial>>) {
+    commands.spawn(
+        PbrBundle {
+            // mesh: meshes.add(Mesh::from(PlaneMeshBuilder::from_length(PLANE_SIZE))),
+            mesh: meshes.add(Mesh::from(Cuboid {
+                half_size: Vec3::new(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0),
+            })),
+            material: materials.add(StandardMaterial {
+                base_color: Color::srgb(1.0, 1.0, 1.0),  // Ground color
+                ..default()
+            }),
+            transform: Transform::from_xyz(0.0, 0.05, 0.0),
+            ..default()
+        })
+        .insert((Collider::cuboid(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0), Restitution::coefficient(0.9)));  // Collider size matching the plane
+
+    // // spawn_ball(&mut commands, &mut meshes, &mut materials, 16.0, rand::random(), rand::random());
+    for i in 0..500 {
+        spawn_ball(&mut commands, &mut meshes, &mut materials, 16.0 + (i as f32 *0.01) * 4.0, rand::random(), rand::random());
+    }
+
+    // Light
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 300_000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_xyz(0.0, 5.0, 0.0),
+        ..default()
+    });
+
+    // Add colliders around the edges of the ground plane
+    let wall_thickness = 0.1;
+    let wall_height = 10000.0;
+    let half_plane_size = PLANE_SIZE / 2.0;
+
+    // Left wall
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Cuboid {
+            half_size: Vec3::new(wall_thickness, wall_height, half_plane_size),
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.5, 0.5, 0.5),
+            ..default()
+        }),
+        transform: Transform::from_xyz(-half_plane_size - wall_thickness, wall_height, 0.0),
+        ..default()
+    })
+        .insert(Collider::cuboid(wall_thickness, wall_height, half_plane_size));
+
+    // Right wall
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Cuboid {
+            half_size: Vec3::new(wall_thickness, wall_height, half_plane_size),
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.5, 0.5, 0.5),
+            ..default()
+        }),
+        transform: Transform::from_xyz(half_plane_size + wall_thickness, wall_height, 0.0),
+        ..default()
+    })
+        .insert(Collider::cuboid(wall_thickness, wall_height, half_plane_size));
+
+    // Front wall
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Cuboid {
+            half_size: Vec3::new(half_plane_size, wall_height, wall_thickness),
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.5, 0.5, 0.5),
+            ..default()
+        }),
+        transform: Transform::from_xyz(0.0, wall_height, half_plane_size + wall_thickness),
+        ..default()
+    })
+        .insert(Collider::cuboid(half_plane_size, wall_height, wall_thickness));
+
+    // Back wall
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Cuboid {
+            half_size: Vec3::new(half_plane_size, wall_height, wall_thickness),
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.5, 0.5, 0.5),
+            ..default()
+        }),
+        transform: Transform::from_xyz(0.0, wall_height, -half_plane_size - wall_thickness),
+        ..default()
+    })
+        .insert(Collider::cuboid(half_plane_size, wall_height, wall_thickness));
+}
+
+#[derive(Bundle, Default)]
+struct BallBundle {
+    pbr_bundle: PbrBundle,
+    collider: Collider,
+    restitution: Restitution,
+    rigid_body: RigidBody,
+    velocity: Velocity,
+    damping: Damping,
+    friction: Friction,
+}
+
+
+fn spawn_ball(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>, height: f32, x: f32, z: f32) {
+    // Create the PbrBundle with Transform
+    let pbr_bundle = PbrBundle {
+        mesh: meshes.add(Mesh::from(Sphere { radius: ENEMY_SIZE / 2.0 })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.8, 0.2, 0.3),
+            metallic: 1.0,
+            perceptual_roughness: 0.0,
+            ..default()
+        }),
+        // The Transform will be added in the next line
+        transform: Transform::from_xyz(x, height, z),
+        ..default()
+    };
+
+    commands
+        .spawn(BallBundle {
+            collider: Collider::ball(ENEMY_SIZE / 2.0),
+            restitution: Restitution::coefficient(0.3),
+            rigid_body: RigidBody::Dynamic,
+            pbr_bundle,
+            ..default()
+        });
+}

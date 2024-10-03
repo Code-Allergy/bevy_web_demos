@@ -21,7 +21,7 @@ fetch('./modules.txt')
     });
 
 async function loadWasmModule(modulePath) {
-    const { default: init } = await import(modulePath);
+    const { default: init, demo_name } = await import(modulePath);
 
     // Initialize the module
     await init().catch((error) => {
@@ -30,16 +30,27 @@ async function loadWasmModule(modulePath) {
       }
     });
 
+    // get the title and place the demo name in the title
+    document.getElementById('demo_title').innerText = demo_name();
+
+    console.log(demo_name());
     console.log(`${modulePath} loaded`);
 }
 
 // Function to remove the current canvas and spawn a new one
 function resetCanvas() {
 // Remove the first canvas found on the page
-    const oldCanvas = document.querySelector('canvas');
-    if (oldCanvas) {
-        oldCanvas.remove(); // Remove the canvas element
-    }
+    // const oldCanvas = document.querySelector('canvas');
+    // if (oldCanvas) {
+    //     oldCanvas.remove(); // Remove the canvas element
+    // }
+
+    // // Create a new canvas element
+    // const canvas = document.createElement('canvas');
+    // canvas.width = 800;
+    // canvas.height = 600;
+    // canvas.id = 'demo_canvas';
+    // document.body.appendChild(canvas); // Append the canvas to the body
 }
 
 // Function to load the current module based on the index
