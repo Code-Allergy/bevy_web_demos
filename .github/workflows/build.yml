@@ -1,13 +1,39 @@
-steps:
-  - uses: actions/checkout@v3
-  - name: Install Nix
-    uses: cachix/install-nix-action@v17
-  #     with:
-  #       # Mostly to avoid GitHub rate limiting
+name: Build and Release
 
-  # extra_nix_config: |
+# This section defines the events that trigger the workflow
+on:
+  push:
+    branches:
+      - main  # Replace with your default branch if different
+  pull_request:
+    branches:
+      - main  # Replace with your default branch if different
 
-  #   access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-  # Note: this would only work if Cargo is included in the Nix shell
-  - name: Build release
-    run: nix develop --command make
+jobs:
+  build:
+    runs-on: ubuntu-latest  # This specifies the environment to run the job
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      #     with:
+      #       # Mostly to avoid GitHub rate limiting
+    
+      # extra_nix_config: |
+    
+      #   access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      # Note: this would only work if Cargo is included in the Nix shell
+      - name: Build release
+        run: nix develop --command make
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist  # Path to your built files
+          publish_branch: gh-pages  # The branch to publish to
+          # Optionally specify a custom message for the commit
+          commit_message: 'Deploy to GitHub Pages'
