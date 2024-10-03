@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>WASM Demo</title>
+    <!-- <link data-trunk rel="copy-dir" href="assets"/> -->
+<!--    <link data-trunk rel="scss" href="./main.scss" />-->
+</head>
+<body>
+    <canvas id="mygame-canvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('mygame-canvas');
+
+        // Function to lock the cursor
+        function lockCursor() {
+            canvas.requestPointerLock().catch(err => {
+                console.error("Error locking the cursor: ", err);
+            });
+        }
+
+        // Function to unlock the cursor
+        function unlockCursor() {
+            document.exitPointerLock();
+        }
+
+        // Event listener for canvas click to lock the cursor
+        canvas.addEventListener('click', lockCursor);
+
+        // Event listener for the keydown event to unlock the cursor
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                unlockCursor();
+            }
+        });
+    </script>
+</body>
+</html>
