@@ -53,6 +53,7 @@
 
           # webgl builds
           trunk
+          wasm-bindgen-cli
         ];
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
       };

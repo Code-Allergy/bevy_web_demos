@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+DIST_DIR="dist"
+BIND_DIR_NAME="binds"
+WASM_OUT_DIR="$DIST_DIR/assets"
+
+JS_OUT_NAME="bind"
+
+BINDINGS_OUT_DIR="$DIST_DIR/$BIND_DIR_NAME"
+MODULES_LIST="$DIST_DIR/modules.txt" # Stores the path of each module
+
+# CARGO_FLAGS="--release"
+
+# Build all wasm files
+cargo build --all-targets --target wasm32-unknown-unknown $CARGO_FLAGS
+
+# Copy the wasm file to the assets folder
+echo "Copying wasm files to $WASM_OUT_DIR"
+mkdir -p "$WASM_OUT_DIR"
+cp target/wasm32-unknown-unknown/release/*.wasm "$WASM_OUT_DIR"
+
+# Copy the index.html file to the dist folder
+echo "Copying index.html to $DIST_DIR"
+cp index.html "$DIST_DIR"
+
+# Copy the css file to the dist folder
+# cp styles.css "$DIST_DIR"
+
+# Copy the js file to the dist folder
+echo "Copying loader to $DIST_DIR"
+cp loader.js "$DIST_DIR"
+
+# Clear previous modules list
+
+# create bindings
+find $WASM_OUT_DIR -type f -name "*.wasm" | while read -r wasm_file; do
+    wasm_file_stripped=$(basename $wasm_file .wasm)
+    echo "Creating bindings for $wasm_file"
+    echo "will bind at $BINDINGS_OUT_DIR/$wasm_file_stripped"
+    mkdir -p $BINDINGS_OUT_DIR/$wasm_file_stripped
+    wasm-bindgen --no-typescript --target web --out-dir $BINDINGS_OUT_DIR/$wasm_file_stripped \
+    --out-name "$JS_OUT_NAME" "$wasm_file"
+
+    # Add the path to the module list
+    # echo "./$BIND_DIR_NAME/$wasm_file_stripped/$JS_OUT_NAME.js" >> "$MODULES_LIST"
+done
+
+find $BINDINGS_OUT_DIR -name "bind.js" | sed 's|^dist/||' | sed 's|^|./|' | sort > "$MODULES_LIST"
+
+
+echo "Done! Build is in $DIST_DIR"
+
+
