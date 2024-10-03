@@ -1,12 +1,17 @@
 <!doctype html>
 <html lang="en">
-
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./style.css"> <!-- Link to the external stylesheet -->
+    <title>WASM Demos</title>
+</head>
 <body style="margin: 0px;">
     <h1 id="demo_title">Loading...</h1>
     <!-- <canvas id="demo_canvas" width="800" height="600"></canvas> -->
-    <div style="flex:auto ">
-        <button id="backward">Back</button>
-        <button id="forward">Next</button>
+    <div class="button-container">
+        <button id="backward" class="nav-button">Back</button>
+        <button id="forward" class="nav-button">Next</button>
     </div>
     <script src="./loader.js"></script>
 </body>

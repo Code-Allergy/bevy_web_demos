@@ -9,7 +9,7 @@ use web_demos::{player, GameControlPlugin};
 struct Player;
 
 #[derive(Component)]
-struct Speed(f32);
+struct Speed;
 
 #[derive(Bundle)]
 struct PlayerBundle {
@@ -19,9 +19,7 @@ struct PlayerBundle {
 }
 
 #[derive(Component)]
-struct Bullet {
-    speed: f32,
-}
+struct Bullet;
 
 #[derive(Bundle)]
 struct BulletBundle {
