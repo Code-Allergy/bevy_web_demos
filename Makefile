@@ -5,7 +5,8 @@
 # Dwight would not be happy with this... I'm too lazy to make this work.
 DIST_DIR := dist
 BIND_DIR_NAME := binds
-WASM_OUT_DIR := $(DIST_DIR)/assets
+WASM_TMP_DIR := $(DIST_DIR)/wasm
+ASSETS_OUT_DIR := $(DIST_DIR)/assets
 JS_OUT_NAME := bind
 BINDINGS_OUT_DIR := $(DIST_DIR)/$(BIND_DIR_NAME)
 CODE_OUT_DIR := $(DIST_DIR)/code
@@ -16,8 +17,9 @@ RUST_SRC_FILES := $(shell find src -name "*.rs")
 WASM_GLOB := target/wasm32-unknown-unknown/debug/*.wasm
 CARGO_FLAGS := # --release
 
-# WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
-# CARGO_FLAGS := --release
+# Uncomment to build in release mode
+WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
+CARGO_FLAGS := --release
 
 
 all: build copy_files create_bindings generate_modules
@@ -32,13 +34,14 @@ build: $(RUST_SRC_FILES)
 
 # Copy the wasm files to the assets folder
 copy_files: build
-# 	@echo "Copying wasm files to $(WASM_OUT_DIR)"
-	mkdir -p $(WASM_OUT_DIR)
-	cp $(WASM_GLOB) $(WASM_OUT_DIR)
+# 	@echo "Copying wasm files to $(ASSETS_OUT_DIR)"
+	mkdir -p $(WASM_TMP_DIR)
+	cp $(WASM_GLOB) $(WASM_TMP_DIR)
 
 	# Copy assets to the dist folder
-	@echo "Copying assets to $(WASM_OUT_DIR)"
-	cp -r assets/* $(WASM_OUT_DIR)
+	@echo "Copying assets to $(ASSETS_OUT_DIR)"
+	mkdir -p $(ASSETS_OUT_DIR)
+	cp -r assets/* $(ASSETS_OUT_DIR)
 
 	# Copy source files to the dist folder
 	@echo "Copying source files to $(CODE_OUT_DIR)"
@@ -58,13 +61,14 @@ copy_files: build
 create_bindings: copy_files
 	@echo "Creating bindings..."
 	@mkdir -p $(BINDINGS_OUT_DIR)
-	find $(WASM_OUT_DIR) -type f -name "*.wasm" | while read -r wasm_file; do \
+	find $(WASM_TMP_DIR) -type f -name "*.wasm" | while read -r wasm_file; do \
 		wasm_file_stripped=$$(basename $$wasm_file .wasm); \
 		echo "Creating bindings for $$wasm_file"; \
 		echo "Will bind at $(BINDINGS_OUT_DIR)/$$wasm_file_stripped"; \
 		mkdir -p $(BINDINGS_OUT_DIR)/$$wasm_file_stripped; \
 		wasm-bindgen --no-typescript --target web --out-dir $(BINDINGS_OUT_DIR)/$$wasm_file_stripped --out-name $(JS_OUT_NAME) $$wasm_file; \
 	done
+	rm -rf $(WASM_TMP_DIR)
 
 # Generate the modules list
 generate_modules: create_bindings
@@ -78,4 +82,4 @@ clean:
 	rm -rf $(DIST_DIR)/*
 	cargo clean
 
-.PHONY: all build copy_files create_bindings generate_modules clean serve
+.PHONY: all copy_files create_bindings generate_modules clean serve
