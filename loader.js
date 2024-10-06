@@ -21,16 +21,9 @@ fetch('./modules.txt')
     });
 
 async function loadWasmModule(modulePath) {
-    // const { default: init, demo_name, startGame } = await import(modulePath);
-
-    // Initialize the module
-    // await init().catch((error) => {
-    //   if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
-    //     throw error;
-    //   }
-    // });
     if (this.wasmContext !== undefined) {
         destroy();
+        document.getElementById('demo_title').innerText = "Loading...";
     }
 
     this.wasmContext = await import(modulePath);

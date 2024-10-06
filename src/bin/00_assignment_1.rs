@@ -21,10 +21,7 @@ pub fn demo_name() -> String {
 pub fn start_game() {
     log("Starting game");
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            // primary_window: Some(get_window()),
-        ..default()
-        }))
+        .add_plugins(DefaultPlugins)
         .add_plugins(GameControlPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, rotate_cube)

@@ -12,11 +12,11 @@ MODULES_LIST := $(DIST_DIR)/modules.txt
 
 RUST_SRC_FILES := $(shell find src -name "*.rs")
 
-# WASM_GLOB := target/wasm32-unknown-unknown/debug/*.wasm
-# CARGO_FLAGS := # --release
+WASM_GLOB := target/wasm32-unknown-unknown/debug/*.wasm
+CARGO_FLAGS := # --release
 
-WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
-CARGO_FLAGS := --release
+# WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
+# CARGO_FLAGS := --release
 
 
 all: build copy_files create_bindings generate_modules
@@ -31,9 +31,13 @@ build: $(RUST_SRC_FILES)
 
 # Copy the wasm files to the assets folder
 copy_files: build
-	@echo "Copying wasm files to $(WASM_OUT_DIR)"
+# 	@echo "Copying wasm files to $(WASM_OUT_DIR)"
 	mkdir -p $(WASM_OUT_DIR)
 	cp $(WASM_GLOB) $(WASM_OUT_DIR)
+
+	# Copy assets to the dist folder
+	@echo "Copying assets to $(WASM_OUT_DIR)"
+	cp -r assets/* $(WASM_OUT_DIR)
 	
 	@echo "Copying index.html to $(DIST_DIR)"
 	cp index.html $(DIST_DIR)
