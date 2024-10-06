@@ -15,11 +15,11 @@ MODULES_LIST := $(DIST_DIR)/modules.txt
 RUST_SRC_FILES := $(shell find src -name "*.rs")
 
 WASM_GLOB := target/wasm32-unknown-unknown/debug/*.wasm
-CARGO_FLAGS := # --release
+CARGO_FLAGS := #
 
 # Uncomment to build in release mode
-WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
-CARGO_FLAGS := --release
+# WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
+# CARGO_FLAGS := --release
 
 
 all: build copy_files create_bindings generate_modules

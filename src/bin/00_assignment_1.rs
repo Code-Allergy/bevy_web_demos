@@ -1,17 +1,12 @@
-//! Illustrates the use of vertex colors.
-//! The cube rotates around the y-axis and moves up and down.
-
 // only used for exporting the demo name, and packaging the wasm
 use wasm_bindgen::prelude::*;
-
-
 use bevy::{prelude::*, render::mesh::VertexAttributeValues};
-use web_demos::{log, GameControlPlugin};
+use web_demos::{DefaultPluginsWithCustomWindow};
 
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String {
-    "Assignment 1: Replication".to_string()
-}
+pub fn demo_name() -> String { "Assignment 1: Replication".to_string() }
+#[wasm_bindgen(js_name = demoDescription)]
+pub fn demo_description() -> String { "A replication of Assignment 1 in Bevy".to_string() }
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("00_assignment_1.rs").to_string() }
 fn main() {
@@ -23,21 +18,10 @@ fn main() {
 // BEVY CODE
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
-    log("Starting game");
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            #[cfg(target_arch = "wasm32")]
-            primary_window: Some(Window {
-                canvas: Some("#game-window".into()),
-                ..default()
-            }),
-
-            ..default()
-        }))
-        .add_plugins(GameControlPlugin)
+        .add_plugins(DefaultPluginsWithCustomWindow)
         .add_systems(Startup, setup)
-        .add_systems(Update, rotate_cube)
-        .add_systems(Update, (move_cube_up_and_down, update_colour))
+        .add_systems(Update, (move_cube_up_and_down, update_colour, rotate_cube))
         .run();
 }
 

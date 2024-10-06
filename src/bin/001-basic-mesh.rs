@@ -11,15 +11,27 @@ use web_demos::{DefaultPluginsWithCustomWindow};
 use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("01-basic-models.rs").to_string() }
+pub fn source_file() -> String { include_str!("001-basic-mesh.rs").to_string() }
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "A small glFW model".to_string() }
+pub fn demo_name() -> String { "A basic cube using bevy primitives".to_string() }
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();
 }
 
 // BEVY CODE
+
+/* DefaultPluginWithCustomWindow:
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        #[cfg(target_arch = "wasm32")]
+        primary_window: Some(Window {
+            canvas: Some("#game-window".into()),
+            ..default()
+        }),
+        ..default()
+    }));
+ */
+
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     App::new()
@@ -30,30 +42,22 @@ pub fn start_game() {
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 2.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 300_000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(-4.0, 4.0, 2.0),
+        transform: Transform::from_xyz(4.0, 2.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
 
-    commands.spawn(SceneBundle {
-        scene: asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("models/Avocado.glb")),
-        transform: Transform {
-            scale: Vec3::splat(16.0),
+    // Basic cube mesh
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Cuboid::default())),
+        material: materials.add(StandardMaterial {
+            base_color: Color::srgb(0.8, 0.0, 0.0),
             ..default()
-        },
+        }),
         ..default()
     });
 }

@@ -68,9 +68,8 @@ async function loadWasmModule(modulePath) {
 
 function resetCanvas() {
     const oldCanvas = document.querySelector('canvas');
-    if (oldCanvas) {
-        oldCanvas.remove();
-    }
+    const gl = oldCanvas.getContext('webgl') || oldCanvas.getContext('experimental-webgl');
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 }
 
 async function loadCurrentModule() {

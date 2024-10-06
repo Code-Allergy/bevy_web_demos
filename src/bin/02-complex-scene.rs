@@ -7,7 +7,7 @@ use bevy::pbr::{PbrBundle, StandardMaterial};
 use bevy::prelude::*;
 use bevy::render::mesh::VertexAttributeValues;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_demos::{GameControlPlugin, log};
+use web_demos::{DefaultPluginsWithCustomWindow};
 use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = demoName)]
@@ -24,16 +24,8 @@ fn main() {
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            #[cfg(target_arch = "wasm32")]
-            primary_window: Some(Window {
-                canvas: Some("#game-window".into()),
-                ..default()
-            }),
-            ..default()
-        }))
+        .add_plugins(DefaultPluginsWithCustomWindow)
         .add_systems(Startup, setup)
-        .add_plugins(GameControlPlugin)
         .add_plugins(PlayerPlugin)
         .run();
 }

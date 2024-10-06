@@ -12,6 +12,23 @@ pub fn get_window() -> Window {
     }
 }
 
+pub struct DefaultPluginsWithCustomWindow;
+
+impl Plugin for DefaultPluginsWithCustomWindow {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(DefaultPlugins.set(WindowPlugin {
+            #[cfg(target_arch = "wasm32")]
+            primary_window: Some(Window {
+                canvas: Some("#game-window".into()),
+                ..default()
+            }),
+            ..default()
+        }));
+    }
+}
+
+
+
 #[wasm_bindgen]
 extern "C" {
     // Use `js_namespace` here to bind `console.log(..)` instead of just
@@ -28,28 +45,4 @@ extern "C" {
     // Multiple arguments too!
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
-}
-
-
-static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
-
-#[wasm_bindgen(js_name = stopGame)]
-pub fn stop_game() {
-    log("Exiting game stop_game");
-    SHOULD_EXIT.store(true, Ordering::SeqCst);
-}
-
-pub struct GameControlPlugin;
-
-impl Plugin for GameControlPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, exit_system);
-    }
-}
-
-fn exit_system(mut exit: EventWriter<AppExit>) {
-    if SHOULD_EXIT.load(Ordering::SeqCst) {
-        log("Exiting game exit_system");
-        exit.send(AppExit::Success);
-    }
 }
