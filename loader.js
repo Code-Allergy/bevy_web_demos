@@ -1,6 +1,19 @@
-let currentModuleIndex = 0; // Track the current module index
-// let wasm_modules = ['./binds/assignment_1/bind.js', ]; // List of WASM modules
-let wasm_modules = []; // List of WASM modules
+let currentModuleIndex = 0;
+let wasm_modules = [];
+let wasmContext;
+
+function getModuleIndexFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const index = parseInt(urlParams.get('module'));
+    return isNaN(index) ? 0 : index;
+}
+
+function updateURLWithModuleIndex(index) {
+    const url = new URL(window.location);
+    url.searchParams.set('module', index);
+    window.history.pushState({}, '', url);
+}
+
 fetch('./modules.txt')
     .then(response => {
         if (!response.ok) {
@@ -9,11 +22,13 @@ fetch('./modules.txt')
         return response.text();
     })
     .then(modulesText => {
-        // Split the text into an array, removing any empty lines
         wasm_modules = modulesText.split('\n').filter(module => module.trim() !== '');
         console.log("Loaded WASM modules:", wasm_modules);
 
-        // Load the first WASM module
+        currentModuleIndex = getModuleIndexFromURL();
+        if (currentModuleIndex >= wasm_modules.length) {
+            currentModuleIndex = 0;
+        }
         loadCurrentModule();
     })
     .catch(error => {
@@ -21,57 +36,63 @@ fetch('./modules.txt')
     });
 
 async function loadWasmModule(modulePath) {
-    if (this.wasmContext !== undefined) {
-        destroy();
-        document.getElementById('demo_title').innerText = "Loading...";
+    try {
+        if (wasmContext) {
+            await destroy();
+            document.getElementById('demo_title').innerText = "Loading...";
+        }
+
+        const module = await import(modulePath);
+        await module.default();
+        wasmContext = module;
+
+        document.getElementById('demo_title').innerText = wasmContext.demoName();
+        console.log(`${modulePath} loaded`);
+        wasmContext.startGame();
+    } catch (error) {
+        console.error(`Failed to load module ${modulePath}:`, error);
+        // document.getElementById('demo_title').innerText = "Error loading module";
     }
-
-    this.wasmContext = await import(modulePath);
-    await this.wasmContext.default();
-
-    // get the title and place the demo name in the title
-    document.getElementById('demo_title').innerText = this.wasmContext.demoName();
-    console.log(`${modulePath} loaded`);
-    this.wasmContext.startGame();
 }
 
-// Function to remove the current canvas and spawn a new one
 function resetCanvas() {
-// Remove the first canvas found on the page
     const oldCanvas = document.querySelector('canvas');
     if (oldCanvas) {
-        oldCanvas.remove(); // Remove the canvas element
+        oldCanvas.remove();
     }
-
-    // // Create a new canvas element
-    // const canvas = document.createElement('canvas');
-    // canvas.width = 800;
-    // canvas.height = 600;
-    // canvas.id = 'demo_canvas';
-    // document.body.appendChild(canvas); // Append the canvas to the body
 }
 
-// Function to load the current module based on the index
 async function loadCurrentModule() {
-    resetCanvas(); // Reset the canvas
-    await loadWasmModule(wasm_modules[currentModuleIndex]); // Load the current module
+    resetCanvas();
+    updateURLWithModuleIndex(currentModuleIndex);
+    await loadWasmModule(wasm_modules[currentModuleIndex]);
 }
 
-
-// Event listener for the forward button
 document.getElementById('forward').addEventListener('click', () => {
     currentModuleIndex = (currentModuleIndex + 1) % wasm_modules.length;
-    loadCurrentModule(); // Load the current module
-});
-  
-// Event listener for the backward button
-document.getElementById('backward').addEventListener('click', () => {
-    currentModuleIndex = (currentModuleIndex - 1 + wasm_modules.length) % wasm_modules.length;
-    loadCurrentModule(); // Load the current module
+    loadCurrentModule();
 });
 
-function destroy() {
-    this.wasmContext?.stopGame?.();
-    this.wasmContext = undefined;
-    this.gameInitialized = false;
+document.getElementById('backward').addEventListener('click', () => {
+    currentModuleIndex = (currentModuleIndex - 1 + wasm_modules.length) % wasm_modules.length;
+    loadCurrentModule();
+});
+
+async function destroy() {
+    if (wasmContext?.stopGame) {
+        try {
+            await wasmContext.stopGame();
+        } catch (error) {
+            console.error("Error stopping game:", error);
+        }
+    }
+    wasmContext = undefined;
 }
+
+window.addEventListener('beforeunload', destroy);
+
+// Add this to handle browser back/forward navigation
+window.addEventListener('popstate', () => {
+    currentModuleIndex = getModuleIndexFromURL();
+    loadCurrentModule();
+});
