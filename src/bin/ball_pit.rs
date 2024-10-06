@@ -9,7 +9,7 @@ pub fn demo_name() -> String {
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("ball_pit.rs").to_string() }
 fn main() {
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(not(target_arch = "wasm32"))]
     start_game();
 }
 

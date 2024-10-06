@@ -15,7 +15,7 @@ pub fn demo_name() -> String { "Loading complex scene".to_string() }
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("02-complex-scene.rs").to_string() }
 fn main() {
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(not(target_arch = "wasm32"))]
     start_game();
 }
 
@@ -23,9 +23,6 @@ fn main() {
 
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
-    #[cfg(target_arch = "wasm32")]
-    log("Starting game");
-
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             #[cfg(target_arch = "wasm32")]
@@ -33,7 +30,6 @@ pub fn start_game() {
                 canvas: Some("#game-window".into()),
                 ..default()
             }),
-
             ..default()
         }))
         .add_systems(Startup, setup)
