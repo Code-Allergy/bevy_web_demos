@@ -1,54 +1,19 @@
 use bevy::prelude::*;
-
 use bevy_rapier3d::prelude::*;
 use wasm_bindgen::prelude::*;
 use web_demos::{player, GameControlPlugin};
-
-
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct Speed;
-
-#[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
-    pbr_bundle: PbrBundle,
-    speed: Speed,
-}
-
-#[derive(Component)]
-struct Bullet;
-
-#[derive(Bundle)]
-struct BulletBundle {
-    bullet: Bullet,
-    pbr_bundle: PbrBundle,
-}
-
-#[derive(Component)]
-struct Enemy;
-
-#[derive(Bundle)]
-struct EnemyBundle {
-    enemy: Enemy,
-    pbr_bundle: PbrBundle,
-}
-
-
-const PLANE_SIZE: f32 = 20.0;
-const ENEMY_SIZE: f32 = 0.5;
-
-
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String {
     "Physics Demo - Ball Pit".to_string()
 }
-
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("ball_pit.rs").to_string() }
+fn main() {
+    #[cfg(target_arch = "x86_64")]
+    start_game();
+}
 
+// BEVY CODE
 
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
@@ -63,26 +28,17 @@ pub fn start_game() {
             ..default()
         }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-        // .add_plugins(RapierDebugRenderPlugin::default())
-        // .add_systems(Startup, setup_graphics)
-        .add_systems(Startup, setup_physics)
-        // .add_systems(Update, print_ball_altitude)
-        // .add_systems(Update, exit_on_escape)
+        .add_systems(Startup, setup)
         .add_plugins(player::PlayerPlugin)
         .add_plugins(GameControlPlugin)
-        // .insert_resource(GameState::default())
-        // .add_systems(Startup, setup)
-        //     .add_systems(Update, (exit_on_escape, spawn_enemies, check_bullet_enemy_collision, display_points))
-        // .add_systems(Update, (exit_on_escape, move_player, camera_follow, spawn_enemies, check_bullet_enemy_collision, display_points))
         .run();
 }
 
-fn main() {
-    // start_game();
-}
+const PLANE_SIZE: f32 = 20.0;
+const BALL_SIZE: f32 = 0.5;
 
 
-fn setup_physics(mut commands: Commands,
+fn setup(mut commands: Commands,
                  mut meshes: ResMut<Assets<Mesh>>,
                  mut materials: ResMut<Assets<StandardMaterial>>) {
     commands.spawn(
@@ -193,7 +149,7 @@ struct BallBundle {
 fn spawn_ball(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>, height: f32, x: f32, z: f32) {
     // Create the PbrBundle with Transform
     let pbr_bundle = PbrBundle {
-        mesh: meshes.add(Mesh::from(Sphere { radius: ENEMY_SIZE / 2.0 })),
+        mesh: meshes.add(Mesh::from(Sphere { radius: BALL_SIZE / 2.0 })),
         material: materials.add(StandardMaterial {
             base_color: Color::srgb(0.8, 0.2, 0.3),
             metallic: 1.0,
@@ -207,7 +163,7 @@ fn spawn_ball(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materi
 
     commands
         .spawn(BallBundle {
-            collider: Collider::ball(ENEMY_SIZE / 2.0),
+            collider: Collider::ball(BALL_SIZE / 2.0),
             restitution: Restitution::coefficient(0.3),
             rigid_body: RigidBody::Dynamic,
             pbr_bundle,

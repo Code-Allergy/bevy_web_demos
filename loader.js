@@ -1,6 +1,7 @@
 let currentModuleIndex = 0;
 let wasm_modules = [];
 let wasmContext;
+let visitedModules = new Set();
 
 function getModuleIndexFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -74,7 +75,14 @@ function resetCanvas() {
 
 async function loadCurrentModule() {
     updateURLWithModuleIndex(currentModuleIndex);
-    await loadWasmModule(wasm_modules[currentModuleIndex]);
+    if (visitedModules.has(currentModuleIndex)) {
+        // If the module has been visited before, refresh the page
+        // this really sucks, but I haven't been able to make wasm modules unload properly
+        window.location.reload();
+    } else {
+        await loadWasmModule(wasm_modules[currentModuleIndex]);
+        visitedModules.add(currentModuleIndex);
+    }
 }
 
 document.getElementById('forward').addEventListener('click', () => {

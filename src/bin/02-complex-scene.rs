@@ -12,9 +12,14 @@ use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String { "Loading complex scene".to_string() }
-
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("02-complex-scene.rs").to_string() }
+fn main() {
+    #[cfg(target_arch = "x86_64")]
+    start_game();
+}
+
+// BEVY CODE
 
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
@@ -36,8 +41,6 @@ pub fn start_game() {
         .add_plugins(PlayerPlugin)
         .run();
 }
-
-// BEVY CODE
 
 fn setup(
     mut commands: Commands,
@@ -64,7 +67,3 @@ fn setup(
     });
 }
 
-fn main() {
-    #[cfg(target_arch = "x86_64")]
-    start_game();
-}

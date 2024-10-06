@@ -14,14 +14,12 @@ use web_demos::player::PlayerPlugin;
 pub fn source_file() -> String { include_str!("01-basic-models.rs").to_string() }
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String { "Loading small model".to_string() }
-
 fn main() {
     #[cfg(target_arch = "x86_64")]
     start_game();
 }
 
 // BEVY CODE
-
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     App::new()

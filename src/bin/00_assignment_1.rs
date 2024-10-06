@@ -7,21 +7,17 @@ use wasm_bindgen::prelude::*;
 
 use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use web_demos::{log, GameControlPlugin};
-fn main() {
-    #[cfg(target_arch = "x86_64")]
-    start_game();
-}
 
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String {
     "Assignment 1: Replication".to_string()
 }
-
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String {
-    include_str!("00_assignment_1.rs").to_string()
+pub fn source_file() -> String { include_str!("00_assignment_1.rs").to_string() }
+fn main() {
+    #[cfg(target_arch = "x86_64")]
+    start_game();
 }
-
 
 
 // BEVY CODE
@@ -88,7 +84,7 @@ fn setup(
 
 fn move_cube_up_and_down(time: Res<Time>, mut query: Query<&mut Transform, With<Cube>>) {
     for mut transform in query.iter_mut() {
-        transform.translation.y = (time.elapsed_seconds().sin() / 2.0) as f32;
+        transform.translation.y = time.elapsed_seconds().sin() / 2.0;
     }
 }
 
@@ -96,7 +92,7 @@ fn update_colour(time: Res<Time>,
     mut query: Query<(&Cube, &Handle<StandardMaterial>)>,
     mut materials: ResMut<Assets<StandardMaterial>>,) {
     for (_cube, material_handle) in query.iter_mut() {
-        let brightness = (time.elapsed_seconds() as f32).sin() * 0.5 + 0.5; // Scale and shift to [0, 1]
+        let brightness = time.elapsed_seconds().sin() * 0.5 + 0.5; // Scale and shift to [0, 1]
         if let Some(material) = materials.get_mut(material_handle) {
             material.base_color = Color::srgb(brightness, brightness, brightness); // Set the color with brightness
         }
