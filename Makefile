@@ -8,6 +8,7 @@ BIND_DIR_NAME := binds
 WASM_OUT_DIR := $(DIST_DIR)/assets
 JS_OUT_NAME := bind
 BINDINGS_OUT_DIR := $(DIST_DIR)/$(BIND_DIR_NAME)
+CODE_OUT_DIR := $(DIST_DIR)/code
 MODULES_LIST := $(DIST_DIR)/modules.txt
 
 RUST_SRC_FILES := $(shell find src -name "*.rs")
@@ -38,6 +39,11 @@ copy_files: build
 	# Copy assets to the dist folder
 	@echo "Copying assets to $(WASM_OUT_DIR)"
 	cp -r assets/* $(WASM_OUT_DIR)
+
+	# Copy source files to the dist folder
+	@echo "Copying source files to $(CODE_OUT_DIR)"
+	mkdir -p $(CODE_OUT_DIR)
+	cp -r src/* $(CODE_OUT_DIR)
 	
 	@echo "Copying index.html to $(DIST_DIR)"
 	cp index.html $(DIST_DIR)

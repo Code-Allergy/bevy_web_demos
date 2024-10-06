@@ -47,11 +47,21 @@ async function loadWasmModule(modulePath) {
         wasmContext = module;
 
         document.getElementById('demo_title').innerText = wasmContext.demoName();
+
+
         console.log(`${modulePath} loaded`);
+        const sourceFile = wasmContext.sourceFile();
+        if (sourceFile) {
+            const code_element = document.getElementById("demo_code");
+            code_element.textContent = sourceFile.trim();
+            await Prism.highlightAll();
+        } else {
+            document.getElementById("demo_code").innerText = "No source code available";
+        }
+
         wasmContext.startGame();
     } catch (error) {
         console.error(`Failed to load module ${modulePath}:`, error);
-        // document.getElementById('demo_title').innerText = "Error loading module";
     }
 }
 
@@ -63,7 +73,6 @@ function resetCanvas() {
 }
 
 async function loadCurrentModule() {
-    // resetCanvas();
     updateURLWithModuleIndex(currentModuleIndex);
     await loadWasmModule(wasm_modules[currentModuleIndex]);
 }

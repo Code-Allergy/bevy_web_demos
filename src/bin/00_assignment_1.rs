@@ -17,6 +17,14 @@ pub fn demo_name() -> String {
     "Assignment 1: Replication".to_string()
 }
 
+#[wasm_bindgen(js_name = sourceFile)]
+pub fn source_file() -> String {
+    include_str!("00_assignment_1.rs").to_string()
+}
+
+
+
+// BEVY CODE
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     log("Starting game");
@@ -36,7 +44,6 @@ pub fn start_game() {
         .add_systems(Update, (move_cube_up_and_down, update_colour))
         .run();
 }
-
 
 #[derive(Component)]
 struct Cube;

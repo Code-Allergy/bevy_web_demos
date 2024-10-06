@@ -10,17 +10,20 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use web_demos::{GameControlPlugin, log};
 use web_demos::player::PlayerPlugin;
 
+#[wasm_bindgen(js_name = sourceFile)]
+pub fn source_file() -> String { include_str!("01-basic-models.rs").to_string() }
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String {
-    "Loading small model".to_string()
+pub fn demo_name() -> String { "Loading small model".to_string() }
+
+fn main() {
+    #[cfg(target_arch = "x86_64")]
+    start_game();
 }
 
+// BEVY CODE
 
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
-    #[cfg(target_arch = "wasm32")]
-    log("Starting game");
-
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             #[cfg(target_arch = "wasm32")]
@@ -32,8 +35,6 @@ pub fn start_game() {
             ..default()
         }))
         .add_systems(Startup, setup)
-        .add_plugins(GameControlPlugin)
-        // .add_plugins(PlayerPlugin)
         .run();
 }
 
@@ -65,9 +66,4 @@ fn setup(
         },
         ..default()
     });
-}
-
-fn main() {
-    #[cfg(target_arch = "x86_64")]
-    start_game();
 }

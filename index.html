@@ -9,16 +9,21 @@
 </head>
 <body style="margin: 0;">
     <h1 id="demo_title">Loading...</h1>
-    <canvas id="game-window" width="800" height="600"></canvas>
+    <canvas id="game-window" width="1280" height="720"></canvas>
     <div class="button-container">
         <button id="backward" class="nav-button">Back</button>
         <button id="forward" class="nav-button">Next</button>
     </div>
-    <code id="demo_code" class="language-rust">
-        fn main() {
-            println!("Hello, world!");
-        }
-    </code>
+    <div id="description-container">
+        <h2>Description:</h2>
+        <p id="demo_description"></p>
+    </div>
+    <h2>Code:</h2>
+    <div id="code-container">
+        <pre>
+            <code id="demo_code" class="language-rust"></code>
+        </pre>
+    </div>
     <script src="./loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>

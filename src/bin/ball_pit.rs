@@ -46,6 +46,9 @@ pub fn demo_name() -> String {
     "Physics Demo - Ball Pit".to_string()
 }
 
+#[wasm_bindgen(js_name = sourceFile)]
+pub fn source_file() -> String { include_str!("ball_pit.rs").to_string() }
+
 
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {

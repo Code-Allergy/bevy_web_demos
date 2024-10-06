@@ -47,3 +47,20 @@ h1 {
 .nav-button:active {
     background-color: #003f7f;
 }
+
+#demo_code {
+    display: block;
+}
+
+#code-container {
+    min-width: 1280px;
+    max-width: 1280px; /* Limit the width */
+    min-height: 600px;
+    max-height: 600px; /* Limit the height */
+    overflow: auto; /* Enable scrolling */
+    border: 1px solid #ddd; /* Optional: border around the code container */
+    padding: 10px; /* Optional: padding inside the container */
+    background-color: #f5f5f5; /* Optional: background color */
+    margin: 0;
+    white-space: pre;
+}
