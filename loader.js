@@ -63,7 +63,7 @@ function resetCanvas() {
 }
 
 async function loadCurrentModule() {
-    resetCanvas();
+    // resetCanvas();
     updateURLWithModuleIndex(currentModuleIndex);
     await loadWasmModule(wasm_modules[currentModuleIndex]);
 }

@@ -51,10 +51,14 @@ pub fn demo_name() -> String {
 pub fn start_game() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            // primary_window: Some(get_window()),
+            #[cfg(target_arch = "wasm32")]
+            primary_window: Some(Window {
+                canvas: Some("#game-window".into()),
+                ..default()
+            }),
+
             ..default()
-            }))
-        // .add_plugins(BulletPlugin)
+        }))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         // .add_plugins(RapierDebugRenderPlugin::default())
         // .add_systems(Startup, setup_graphics)
