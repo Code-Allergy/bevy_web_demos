@@ -11,7 +11,7 @@ use web_demos::{DefaultPluginsWithCustomWindow};
 use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("01-basic-models.rs").to_string() }
+pub fn source_file() -> String { include_str!("002-basic-models.rs").to_string() }
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String { "A small glFW model".to_string() }
 fn main() {

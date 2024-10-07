@@ -23,7 +23,8 @@ impl Plugin for DefaultPluginsWithCustomWindow {
                 ..default()
             }),
             ..default()
-        }));
+        }))
+            .add_plugins(GameControlPlugin);
     }
 }
 
@@ -45,4 +46,28 @@ extern "C" {
     // Multiple arguments too!
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
+}
+
+
+static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
+
+#[wasm_bindgen(js_name = stopGame)]
+pub fn stop_game() {
+    log("Exiting game stop_game");
+    SHOULD_EXIT.store(true, Ordering::SeqCst);
+}
+
+pub struct GameControlPlugin;
+
+impl Plugin for GameControlPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, exit_system);
+    }
+}
+
+fn exit_system(mut exit: EventWriter<AppExit>) {
+    if SHOULD_EXIT.load(Ordering::SeqCst) {
+        log("Exiting game exit_system");
+        exit.send(AppExit::Success);
+    }
 }

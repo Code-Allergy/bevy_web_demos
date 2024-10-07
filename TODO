@@ -1,0 +1,16 @@
+Fix rendering all demos at the same time
+
+
+1. Basic Cube Demo: DONE
+2. Basic Model Demo: DONE/could improve
+3. Assignment 1 demo: DONE
+4. Physics Demo with Lots of Balls: DONE
+5. Loading a Large Scene with Lots of Models/Complex models: DONE
+
+7. Custom Shader Demonstration (Phong, Toon, Gooch)
+8. Assignment 2 demo
+9. Post-Processing Effects (Bloom, Blur, etc.)
+
+10. Interactive Object Picking (Mouse or Keyboard Input)
+
+11. Small 3D game incorporating the key mechanic from Overball

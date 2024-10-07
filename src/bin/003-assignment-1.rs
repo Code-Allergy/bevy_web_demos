@@ -8,7 +8,7 @@ pub fn demo_name() -> String { "Assignment 1: Replication".to_string() }
 #[wasm_bindgen(js_name = demoDescription)]
 pub fn demo_description() -> String { "A replication of Assignment 1 in Bevy".to_string() }
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("00_assignment_1.rs").to_string() }
+pub fn source_file() -> String { include_str!("003-assignment-1.rs").to_string() }
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();

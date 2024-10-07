@@ -7,7 +7,7 @@ pub fn demo_name() -> String {
     "Physics Demo - Ball Pit".to_string()
 }
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("ball_pit.rs").to_string() }
+pub fn source_file() -> String { include_str!("005-physics-balls.rs").to_string() }
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();
