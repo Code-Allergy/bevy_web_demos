@@ -1,5 +1,7 @@
+use std::time::Duration;
 use bevy::app::{App, Startup};
 use bevy::asset::Assets;
+use bevy::audio::Volume;
 use bevy::color::Color;
 use bevy::color::palettes::basic::RED;
 use bevy::DefaultPlugins;
@@ -34,67 +36,99 @@ enum InGameState {
     NotInGame,
     Playing,
     Paused,
+    PlayerDied,
     GameOver,
+}
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+enum MainMenuSet {
+    Setup,
+    Update,
+    Cleanup,
+}
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+enum GameplaySet {
+    Setup,
+    Update,
 }
 
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
-    App::new()
-        .add_plugins(DefaultPluginsWithCustomWindow)
-        .insert_state(GameState::Title)
-        .init_state::<InGameState>()
-        .add_systems(Update, start_button_system)
-        .add_systems(OnEnter(GameState::Title), (
-            setup_main_menu_ui,
-        ))
-        .add_systems(OnExit(GameState::Title), (
-            despawn_main_menu,
-        ))
-        .add_systems(OnEnter(GameState::Game), (
-            setup,
-        ))
+    let mut app = App::new();
 
-        // when we exit in game state to gameover, kill all entities
+    // Plugins
+    app
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(RapierDebugRenderPlugin::default())
+        .add_plugins(DefaultPluginsWithCustomWindow);
 
-        // .add_systems(Startup, setup)
-        .add_systems(Update, (move_player_when_pressing_keys,
-                  check_player_out_of_bounds).run_if(in_state(GameState::Game)))
-        // .add_systems(Update, move_player_when_pressing_keys)
-        // .add_systems(Update, check_player_out_of_bounds)
-        // .add_plugins(PlayerPlugin)
-        .run();
+    // States
+    app
+        .insert_state(GameState::Title)
+        .init_state::<InGameState>();
+
+    // Configure System Sets
+    app.configure_sets(Update, (
+        MainMenuSet::Update
+            .run_if(in_state(GameState::Title)),
+        GameplaySet::Update
+            .run_if(in_state(GameState::Game))
+            .run_if(in_state(InGameState::Playing)),
+    ));
+
+    // Main Menu
+    app.configure_sets(OnEnter(GameState::Title), (
+        MainMenuSet::Setup,
+    ));
+
+    app.configure_sets(OnExit(GameState::Title), (
+        MainMenuSet::Cleanup,
+    ));
+
+    app.configure_sets(OnEnter(GameState::Game), (
+        GameplaySet::Setup,
+    ));
+
+    // Add systems to sets
+    app
+        // Main Menu
+        .add_systems(OnEnter(GameState::Title), (setup_main_menu_ui,).in_set(MainMenuSet::Setup))
+        .add_systems(Update, (start_button_system,).in_set(MainMenuSet::Update))
+        .add_systems(OnExit(GameState::Title), (despawn_main_menu,).in_set(MainMenuSet::Cleanup))
+
+        // Game
+        .add_systems(OnEnter(GameState::Game), (
+            setup_game_ui,
+            setup_game_camera,
+            setup_map,
+            setup_player
+        ).in_set(GameplaySet::Setup))
+
+        .add_systems(Update, (
+            move_player_when_pressing_keys,
+            check_player_out_of_bounds,
+        ).in_set(GameplaySet::Update))
+
+        // Game Over
+        .add_systems(OnEnter(InGameState::PlayerDied), handle_player_death)
+        .add_systems(Update, check_death_timer.run_if(in_state(InGameState::PlayerDied)));
+
+    app.run();
 }
 
-// TODO break this up into several startup systems
-fn setup(
+
+fn setup_map(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
-    mut game_state: ResMut<NextState<GameState>>,
 ) {
-    let font = asset_server.load("fonts/montserrat.ttf");
-    let text_style = TextStyle {
-        font: font.clone(),
-        font_size: 28.0,
-        ..default()
-    };
-
-
-    // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 20.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
-        ..default()
-    });
-
     // flat plane for testing
     commands.spawn((
         Transform::default(),
         GlobalTransform::default(),
-        Collider::cuboid(10.0, 0.1, 10.0),  // Collider for the plane
-        Restitution::coefficient(0.9),      // Adjusting physics properties
+        Collider::cuboid(10.0, 0.1, 10.0),
+        Restitution::coefficient(0.9),
     ))
         .with_children(|parent| {
             parent.spawn(PbrBundle {
@@ -108,8 +142,6 @@ fn setup(
             });
         });
 
-    // commands.spawn((Collider::cuboid(10.0, 1.0, 10.0), Restitution::coefficient(0.9)));
-
     // light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
@@ -121,7 +153,15 @@ fn setup(
 
         ..default()
     });
-
+}
+fn setup_player(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut game_state: ResMut<NextState<GameState>>,
+    mut gameplay_state: ResMut<NextState<InGameState>>,
+    asset_server: Res<AssetServer>,
+) {
     let ball_properties = BallProperties::default();
     // Player ball
     commands.spawn(PlayerBundle {
@@ -145,6 +185,43 @@ fn setup(
         restitution: Restitution::coefficient(0.3),
         rigid_body: RigidBody::Dynamic,
     });
+
+    // TEMP
+    commands.spawn(AudioBundle {
+        source: asset_server.load("sounds/bg.mp3"),
+        settings: PlaybackSettings {
+            volume: Volume::new(0.2),
+            ..default()
+        },
+
+        // ..default()
+    });
+
+    game_state.set(GameState::Game);
+    gameplay_state.set(InGameState::Playing);
+}
+
+// this will later be spawned with the player, as it will track the player from behind
+fn setup_game_camera(
+    mut commands: Commands,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
+        ..default()
+    });
+}
+
+fn setup_game_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let font = asset_server.load("fonts/montserrat.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 28.0,
+        ..default()
+    };
+
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -161,8 +238,6 @@ fn setup(
                 "Lives: 3", text_style.clone(),
             ), LivesText));
         });
-
-    game_state.set(GameState::Game);
 }
 
 // BEVY CODE
@@ -214,8 +289,8 @@ struct PlayerBundle {
     rigid_body: RigidBody,
 }
 
-const MOVEMENT_SPEED: f32 = 0.001; // Adjust this value for faster or slower movement
-const DAMPING_FACTOR: f32 = 0.995; // Lower values lead to faster stopping
+const MOVEMENT_SPEED: f32 = 0.001;
+const DAMPING_FACTOR: f32 = 0.995;
 
 fn move_player_when_pressing_keys(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -265,12 +340,13 @@ fn move_player_when_pressing_keys(
 }
 
 // Define the play area bounds
-const MIN_X: f32 = -10.0;
-const MAX_X: f32 = 10.0;
-const MIN_Y: f32 = 0.0;   // Keep Y > 0 to prevent falling out of the world
+// Let the player clip off the playable area, but not fall off the world
+const MIN_X: f32 = -20.0;
+const MAX_X: f32 = 20.0;
+const MIN_Y: f32 = -10.0;   // Keep Y > 0 to prevent falling out of the world
 const MAX_Y: f32 = 10.0;
-const MIN_Z: f32 = -10.0;
-const MAX_Z: f32 = 10.0;
+const MIN_Z: f32 = -20.0;
+const MAX_Z: f32 = 20.0;
 
 fn check_player_out_of_bounds(
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
@@ -291,7 +367,7 @@ fn check_player_out_of_bounds(
             // Decrease lives
             for mut life in lives.iter_mut() {
                 if life.lives == 0 {
-                    game_state.set(InGameState::GameOver);
+                    game_state.set(InGameState::PlayerDied);
                     return;
                 }
                 life.lives -= 1;
@@ -302,7 +378,8 @@ fn check_player_out_of_bounds(
             for mut text in lives_text.iter_mut() {
                 text.sections[0].value = format!("Lives: {}", lives.iter().next().unwrap().lives);
             }
-            // Handle out of bounds case (e.g., reset position, apply penalty, etc.)
+
+
             reset_player_position(&mut transform, &mut ball);
         }
     }
@@ -439,6 +516,171 @@ fn start_button_system(
                 text.sections[0].value = "Start".to_string();
                 *color = NORMAL_BUTTON.into();
                 border_color.0 = Color::BLACK;
+            }
+        }
+    }
+}
+
+#[derive(Component)]
+struct DeathTimer {
+    timer: Timer,
+}
+
+fn handle_player_death(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let font = asset_server.load("fonts/montserrat.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 60.0,
+        color: Color::WHITE,
+    };
+
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            background_color: Color::srgba(0.0, 0.0, 0.0, 0.5).into(),
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Game Over!",
+                text_style,
+            ));
+        });
+
+    commands.spawn(AudioBundle {
+        source: asset_server.load("sounds/game_over.wav"),
+        settings: PlaybackSettings {
+            volume: Volume::new(0.2),
+            ..default()
+        },
+    });
+
+    // Spawn the death timer
+    commands.spawn(DeathTimer {
+        timer: Timer::new(Duration::from_secs(3), TimerMode::Once),
+    });
+}
+
+fn check_death_timer(
+    time: Res<Time>,
+    mut timer_query: Query<&mut DeathTimer>,
+    mut in_game_state: ResMut<NextState<InGameState>>,
+) {
+    for mut death_timer in &mut timer_query {
+        if death_timer.timer.tick(time.delta()).just_finished() {
+            in_game_state.set(InGameState::GameOver);
+        }
+    }
+}
+
+#[derive(Component)]
+struct GameOverUI;
+
+// TODO
+fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let font = asset_server.load("fonts/montserrat.ttf");
+    let text_style = TextStyle {
+        font: font.clone(),
+        font_size: 60.0,
+        color: Color::WHITE,
+    };
+    let button_style = TextStyle {
+        font,
+        font_size: 40.0,
+        color: Color::BLACK,
+    };
+
+    commands
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    flex_direction: FlexDirection::Column,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                background_color: Color::srgba(0.0, 0.0, 0.0, 0.8).into(),
+                ..default()
+            },
+            GameOverUI,
+        ))
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Game Over!",
+                text_style,
+            ));
+            parent.spawn((
+                ButtonBundle {
+                    style: Style {
+                        width: Val::Px(200.0),
+                        height: Val::Px(65.0),
+                        margin: UiRect::all(Val::Px(20.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    },
+                    background_color: Color::srgba(0.8, 0.8, 0.8, 1.0).into(),
+                    ..default()
+                },
+            ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "Restart",
+                        button_style,
+                    ));
+                });
+        });
+}
+
+// TODO
+fn handle_game_over_input(
+    mut commands: Commands,
+    mut app_state: ResMut<NextState<GameState>>,
+    mut in_game_state: ResMut<NextState<InGameState>>,
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<Button>),
+    >,
+    game_over_ui: Query<Entity, With<GameOverUI>>,
+    player_query: Query<Entity, With<Player>>,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        match *interaction {
+            Interaction::Pressed => {
+                // Restart the game
+                // Remove the game over UI
+                for entity in game_over_ui.iter() {
+                    commands.entity(entity).despawn_recursive();
+                }
+
+                // Reset player health
+                for player_entity in player_query.iter() {
+                    commands.entity(player_entity).insert(Lives { lives: 3 });
+                }
+
+                // Reset game states
+                app_state.set(GameState::Game);
+                in_game_state.set(InGameState::Playing);
+
+                // You might want to reset other game elements here
+                // For example, resetting the player's position, clearing enemies, etc.
+            }
+            Interaction::Hovered => {
+                *color = Color::srgba(0.9, 0.9, 0.9, 1.0).into();
+            }
+            Interaction::None => {
+                *color = Color::srgba(0.8, 0.8, 0.8, 1.0).into();
             }
         }
     }

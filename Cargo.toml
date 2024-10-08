@@ -13,7 +13,7 @@ bevy_hanabi = "0.12.2"
 
 [dependencies.bevy]
 version = "0.14.2"
-features = ["jpeg", "shader_format_glsl"]
+features = ["jpeg", "shader_format_glsl", "mp3", "wav"]
 
 [profile.dev]
 opt-level = 1
