@@ -22,7 +22,7 @@ CARGO_FLAGS :=
 # CARGO_FLAGS := --release
 
 
-all: build copy_files create_bindings generate_modules
+all: build copy_files # create_bindings generate_modules
 
 serve: all
 	@echo "Starting server..."
