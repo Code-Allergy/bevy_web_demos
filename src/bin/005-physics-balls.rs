@@ -26,7 +26,7 @@ pub fn start_game() {
 }
 
 const PLANE_SIZE: f32 = 20.0;
-const BALL_SIZE: f32 = 0.5;
+const BALL_SIZE: f32 = 1.0;
 
 
 fn setup(mut commands: Commands,
@@ -48,7 +48,7 @@ fn setup(mut commands: Commands,
         .insert((Collider::cuboid(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0), Restitution::coefficient(0.9)));  // Collider size matching the plane
 
     // // spawn_ball(&mut commands, &mut meshes, &mut materials, 16.0, rand::random(), rand::random());
-    for i in 0..500 {
+    for i in 0..1000 {
         spawn_ball(&mut commands, &mut meshes, &mut materials, 16.0 + (i as f32 *0.01) * 4.0, rand::random(), rand::random());
     }
 
