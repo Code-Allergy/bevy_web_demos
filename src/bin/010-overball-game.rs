@@ -19,8 +19,6 @@ use bevy::{
     render::mesh::PlaneMeshBuilder,
 };
 
-
-
 // Debug only on x86_64
 #[cfg(target_arch = "x86_64")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -55,6 +53,23 @@ fn main() {
     start_game();
 }
 
+#[derive(Resource, Debug)]
+struct GameContext {
+    pub lives: u32,
+    pub score: u32,
+    pub level: u32,
+}
+
+impl Default for GameContext {
+    fn default() -> Self {
+        GameContext {
+            lives: PLAYER_LIVES,
+            score: 0,
+            level: 1,
+        }
+    }
+}
+
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
 enum AppState {
     Loading,
@@ -66,6 +81,7 @@ enum AppState {
 enum InGameState {
     #[default]
     NotInGame,
+    Reset,
     Playing,
     Paused,
     PlayerDied,
@@ -109,7 +125,13 @@ pub fn start_game() {
         
         app
         .insert_state(AppState::Loading)
-        .init_state::<InGameState>();
+        .init_state::<InGameState>()
+        .init_resource::<GameContext>();
+
+        // Debug (always run)
+        // app
+        // .add_systems(Update, debug_game_state)
+        // .add_systems(Update, debug_in_game_state);
 
     // Configure System Sets
     app.configure_sets(Update, (
@@ -129,25 +151,28 @@ pub fn start_game() {
 
     // Add systems to sets
     app
-        // Loading
+        // Loading state
         .add_systems(OnEnter(AppState::Loading), load_audio_assets)
         .add_systems(Update, check_audio_loaded.run_if(in_state(AppState::Loading)))
 
-        // Main Menu
+        // Title state
         .add_systems(OnEnter(AppState::Title), (setup_main_menu_ui,).in_set(MainMenuSet::Setup))
         .add_systems(Update, (start_button_system,).in_set(MainMenuSet::Update))
         .add_systems(OnExit(AppState::Title), (despawn_main_menu,).in_set(MainMenuSet::Cleanup))
 
-        // Game
-        .add_systems(OnEnter(AppState::Game), start_setup)
+        // Game state
+        .add_systems(OnEnter(AppState::Game), (
+            initial_game_setup, 
+            setup_background_music // TODO we should have a method to disable audio
+        ))
 
 
-        .add_systems(OnEnter(InGameState::Playing), (
-            setup_game_ui,
-            setup_game_camera,
+        .add_systems(OnEnter(InGameState::Reset), (
+            // setup_game_ui,
+            // setup_game_camera,
             setup_map,
             setup_player,
-            setup_background_music // TODO we should have a method to disable audio
+            
         ).in_set(GameplaySet::Setup))
 
         .add_systems(Update, (
@@ -170,16 +195,8 @@ pub fn start_game() {
             setup_game_over_ui, play_gameover_sound 
         ))
         .add_systems(Update, handle_game_over_input.run_if(in_state(InGameState::GameOver)))
-        .add_systems(OnExit(InGameState::GameOver), despawn_world);
+        .add_systems(OnExit(InGameState::GameOver), despawn_player_and_map);
         // .add_systems(Update, check_death_timer.run_if(in_state(InGameState::PlayerDied)));
-
-        
-
-        // Debug
-    app
-
-        .add_systems(Update, debug_game_state)
-        .add_systems(Update, debug_in_game_state);
 
     #[cfg(target_arch = "x86_64")]
     app.add_plugins(WorldInspectorPlugin::new());
@@ -188,10 +205,17 @@ pub fn start_game() {
 }
 
 // Transition system to start game when we enter AppState::Game
-fn start_setup(
-    mut game_state: ResMut<NextState<InGameState>>,
-) {
-    game_state.set(InGameState::Playing);
+fn initial_game_setup(
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<InGameState>>,
+    asset_server: Res<AssetServer>,) {
+    setup_game_camera(&mut commands);
+    setup_game_ui(&mut commands, asset_server);
+    // Set up any persistent game resources or one-time initializations
+    // ...
+    
+    // Transition to the Reset state to set up the actual game world
+    next_state.set(InGameState::Reset);
 }
 
 // Loading
@@ -234,7 +258,8 @@ fn setup_map(
         GlobalTransform::default(),
         Collider::cuboid(10.0, 0.1, 10.0),
         Restitution::coefficient(0.9),
-        InheritedVisibility::default()
+        InheritedVisibility::default(),
+        GameMap,
     ))
         .with_children(|parent| {
             parent.spawn(PbrBundle {
@@ -270,7 +295,6 @@ fn setup_player(
     let ball_properties = BallProperties::default();
     // Player ball
     commands.spawn(PlayerBundle {
-        lives: Lives { lives: PLAYER_LIVES },
         player: Player,
         ball: Ball {
             position: ball_properties.position,
@@ -311,7 +335,7 @@ fn setup_background_music(
 
 // this will later be spawned with the player, as it will track the player from behind
 fn setup_game_camera(
-    mut commands: Commands,
+    commands: &mut Commands,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
@@ -320,7 +344,7 @@ fn setup_game_camera(
 }
 
 fn setup_game_ui(
-    mut commands: Commands,
+    commands: &mut Commands,
     asset_server: Res<AssetServer>,
 ) {
     let font = asset_server.load("fonts/montserrat.ttf");
@@ -343,7 +367,7 @@ fn setup_game_ui(
         })
         .with_children(|parent| {
             parent.spawn((TextBundle::from_section(
-                "Lives: 3", text_style.clone(),
+                format!("Lives: {}", PLAYER_LIVES), text_style.clone(),
             ), LivesText));
         });
 }
@@ -381,14 +405,8 @@ struct Ball {
 #[derive(Component)]
 struct Player;
 
-#[derive(Component)]
-struct Lives {
-    pub lives: u32,
-}
-
 #[derive(Bundle)]
 struct PlayerBundle {
-    lives: Lives,
     player: Player,
     ball: Ball,
     pbr_bundle: PbrBundle,
@@ -396,6 +414,9 @@ struct PlayerBundle {
     restitution: Restitution,
     rigid_body: RigidBody,
 }
+
+#[derive(Component)]
+struct GameMap;
 
 fn move_player_when_pressing_keys(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -444,41 +465,36 @@ fn move_player_when_pressing_keys(
     }
 }
 
-fn despawn_world(
+fn despawn_player_and_map(
     mut commands: Commands,
-    window_query: Query<Entity, With<Window>>, // Query for the Window entity
-    all_entities_query: Query<Entity>, // Query for all entities
+    player_query: Query<Entity, With<Player>>,
+    map_query: Query<Entity, With<GameMap>>,
 ) {
-    // Get the window entity (assumes there is only one)
-    let window_entity = window_query.iter().next();
-
-    // Despawn all entities except the window entity
-    for entity in all_entities_query.iter() {
-        if Some(entity) != window_entity {
-            commands.entity(entity).despawn_recursive();
-        }
+    for entity in player_query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    for entity in map_query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
 
 fn handle_player_death(
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
-    mut lives: Query<&mut Lives, With<Player>>,
+    mut context: ResMut<GameContext>,
     mut lives_text: Query<&mut Text, With<LivesText>>,
     mut game_state: ResMut<NextState<InGameState>>,
 ) {
     for (mut transform, mut ball) in query.iter_mut() {
         // Decrease lives
-        for mut life in lives.iter_mut() {
-            if life.lives == 0 {
-                game_state.set(InGameState::GameOver);
-                return;
-            }
-            life.lives -= 1;
+        if context.lives == 0 {
+            game_state.set(InGameState::GameOver);
+            return;
         }
+        context.lives -= 1;
 
-        // Update the UI text
+        // Update the UI text // TODO move this out
         for mut text in lives_text.iter_mut() {
-            text.sections[0].value = format!("Lives: {}", lives.iter().next().unwrap().lives);
+            text.sections[0].value = format!("Lives: {}", context.lives);
         }
 
         transform.translation = Vec3::new(0.0, 1.0, 0.0);
@@ -708,14 +724,13 @@ fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 // TODO
 fn handle_game_over_input(
     mut commands: Commands,
-    mut app_state: ResMut<NextState<AppState>>,
     mut in_game_state: ResMut<NextState<InGameState>>,
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
     game_over_ui: Query<Entity, With<GameOverUI>>,
-    player_query: Query<Entity, With<Player>>,
+    mut context: ResMut<GameContext>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
@@ -726,12 +741,10 @@ fn handle_game_over_input(
                     commands.entity(entity).despawn_recursive();
                 }
 
-                // Reset player health
-                for player_entity in player_query.iter() {
-                    commands.entity(player_entity).insert(Lives { lives: 3 });
-                }
+                // Reset player lives
+                context.lives = PLAYER_LIVES;
 
-                in_game_state.set(InGameState::Playing);
+                in_game_state.set(InGameState::Reset);
 
                 // You might want to reset other game elements here
                 // For example, resetting the player's position, clearing enemies, etc.
