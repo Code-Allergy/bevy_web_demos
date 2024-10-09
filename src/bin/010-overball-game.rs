@@ -1,18 +1,28 @@
-use std::time::Duration;
-use bevy::app::{App, Startup};
-use bevy::asset::Assets;
-use bevy::audio::Volume;
-use bevy::color::Color;
-use bevy::color::palettes::basic::RED;
-use bevy::math::Vec3;
-use bevy::pbr::{PbrBundle, StandardMaterial};
 use bevy::prelude::*;
-use bevy::render::mesh::{PlaneMeshBuilder, VertexAttributeValues};
 use bevy_rapier3d::prelude::*;
-use wasm_bindgen::prelude::wasm_bindgen;
-use web_demos::{DefaultPluginsWithCustomWindow};
-use web_demos::player::PlayerPlugin;
+use wasm_bindgen::prelude::*;
 
+use web_demos::DefaultPluginsWithCustomWindow;
+use bevy::{
+    app::App,
+    asset::Assets,
+    audio::Volume,
+    color::{
+        Color,
+        palettes::basic::RED,
+    },
+    math::Vec3,
+    pbr::{
+        PbrBundle, 
+        StandardMaterial
+    },
+    render::mesh::PlaneMeshBuilder,
+};
+
+
+
+// Debug only on x86_64
+#[cfg(target_arch = "x86_64")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 
@@ -163,8 +173,10 @@ pub fn start_game() {
     app
 
         .add_systems(Update, debug_game_state)
-        .add_systems(Update, debug_in_game_state)
-        .add_plugins(WorldInspectorPlugin::new());
+        .add_systems(Update, debug_in_game_state);
+
+    #[cfg(target_arch = "x86_64")]
+    app.add_plugins(WorldInspectorPlugin::new());
 
     app.run();
 }
