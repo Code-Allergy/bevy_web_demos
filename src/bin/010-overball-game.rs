@@ -37,6 +37,14 @@ const MAX_Z: f32 = 20.0;
 
 const PLAYER_LIVES: u32 = 0;
 
+const MOVEMENT_SPEED: f32 = 0.001;
+const DAMPING_FACTOR: f32 = 0.995;
+
+// UI Style
+const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
+const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
+const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
+
 
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("010-overball-game.rs").to_string() }
@@ -87,8 +95,6 @@ struct AudioAssets {
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     let mut app = App::new();
-
-    
     app
     
     // Plugins
@@ -391,9 +397,6 @@ struct PlayerBundle {
     rigid_body: RigidBody,
 }
 
-const MOVEMENT_SPEED: f32 = 0.001;
-const DAMPING_FACTOR: f32 = 0.995;
-
 fn move_player_when_pressing_keys(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
@@ -441,27 +444,6 @@ fn move_player_when_pressing_keys(
     }
 }
 
-
-
-// fn despawn_world(
-//     mut commands: Commands,
-//     query: Query<(Entity, Option<&Window>)>, // Use a query to find entities with the Window component
-// ) {
-//     // Find the window entity first
-//     let window_entity = query.iter()
-//         .filter(|(_, window)| window.is_some())
-//         .map(|(entity, _)| entity)
-//         .next();
-
-//     // Despawn all entities except the window entity
-//     for entity in query.iter() {
-//         // Only despawn if the entity is not the window entity
-//         if Some(entity.0) != window_entity {
-//             commands.entity(entity.0).despawn_recursive();
-//         }
-//     }
-// }
-
 fn despawn_world(
     mut commands: Commands,
     window_query: Query<Entity, With<Window>>, // Query for the Window entity
@@ -477,50 +459,6 @@ fn despawn_world(
         }
     }
 }
-
-// fn check_player_out_of_bounds(
-//     mut query: Query<(Entity, &mut Transform, &mut Ball), With<Player>>,
-//     mut lives: Query<&mut Lives, With<Player>>,
-//     mut lives_text: Query<&mut Text, With<LivesText>>,
-//     mut game_state: ResMut<NextState<InGameState>>,
-//     mut ball_velocities: Query<&mut Velocity, With<Player>>,
-// ) {
-//     for (entity, mut transform, mut ball) in query.iter_mut() {
-//         let position = transform.translation;
-
-//         // Check if the player is out of bounds
-//         if position.x < MIN_X || position.x > MAX_X ||
-//             position.y < MIN_Y || position.y > MAX_Y ||
-//             position.z < MIN_Z || position.z > MAX_Z
-//         {
-//             println!("Player is out of bounds!");
-
-//             // Decrease lives
-//             for mut life in lives.iter_mut() {
-//                 if life.lives == 0 {
-//                     game_state.set(InGameState::GameOver);
-//                     return;
-//                 }
-//                 life.lives -= 1;
-//                 println!("Lives left: {}", life.lives);
-//             }
-
-//             // Update the UI text
-//             for mut text in lives_text.iter_mut() {
-//                 text.sections[0].value = format!("Lives: {}", lives.iter().next().unwrap().lives);
-//             }
-
-//             transform.translation = Vec3::new(0.0, 1.0, 0.0);
-//             ball.velocity = Vec3::ZERO;
-
-//             // Update the rigid body's position and velocity
-//             if let Ok(mut rigid_body_velocity) = ball_velocities.get_mut(entity) {
-//                 rigid_body_velocity.linvel = Vec3::ZERO; // Reset linear velocity
-//                 rigid_body_velocity.angvel = Vec3::ZERO; // Optionally reset angular velocity
-//             }
-//         }
-//     }
-// }
 
 fn handle_player_death(
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
@@ -576,11 +514,6 @@ struct ActivationTile {
 
 
 // MAIN MENU //
-
-// TMP
-const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
 
 
 #[derive(Component)]
