@@ -24,11 +24,9 @@ impl Plugin for DefaultPluginsWithCustomWindow {
             }),
             ..default()
         }))
-            .add_plugins(GameControlPlugin);
+        .add_plugins(GameControlPlugin);
     }
 }
-
-
 
 #[wasm_bindgen]
 extern "C" {
@@ -47,7 +45,6 @@ extern "C" {
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
 }
-
 
 static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
 

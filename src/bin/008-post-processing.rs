@@ -34,11 +34,14 @@ use bevy::{
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_demos::DefaultPluginsWithCustomWindow;
 
-
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("008-post-processing.rs").to_string() }
+pub fn source_file() -> String {
+    include_str!("008-post-processing.rs").to_string()
+}
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "Post Processing: Chromatic Aberration".to_string() }
+pub fn demo_name() -> String {
+    "Post Processing: Chromatic Aberration".to_string()
+}
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();
@@ -168,9 +171,9 @@ impl ViewNode for PostProcessNode {
 
         // Get the pipeline from the cache
         let Some(pipeline) = pipeline_cache.get_render_pipeline(post_process_pipeline.pipeline_id)
-            else {
-                return Ok(());
-            };
+        else {
+            return Ok(());
+        };
 
         // Get the settings uniform binding
         let settings_uniforms = world.resource::<ComponentUniforms<PostProcessSettings>>();

@@ -11,12 +11,15 @@ use bevy::{
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_demos::DefaultPluginsWithCustomWindow;
-use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("007-assignment-2.rs").to_string() }
+pub fn source_file() -> String {
+    include_str!("007-assignment-2.rs").to_string()
+}
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "Shaders: Assignment 2 Recreation (unfinished)".to_string() }
+pub fn demo_name() -> String {
+    "Shaders: Assignment 2 Recreation (unfinished)".to_string()
+}
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();
@@ -25,7 +28,10 @@ fn main() {
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     App::new()
-        .add_plugins((DefaultPluginsWithCustomWindow, MaterialPlugin::<CustomMaterial>::default()))
+        .add_plugins((
+            DefaultPluginsWithCustomWindow,
+            MaterialPlugin::<CustomMaterial>::default(),
+        ))
         .add_systems(Startup, setup)
         .add_systems(Update, (rotate_and_orbit_model, update_mode))
         .run();
@@ -51,7 +57,6 @@ impl ShaderStyle {
     }
 }
 
-
 const ORBIT_RADIUS: f32 = 2.0;
 
 /// set up a simple 3D scene
@@ -59,7 +64,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<CustomMaterial>>,
-    asset_server: Res<AssetServer>
+    asset_server: Res<AssetServer>,
 ) {
     let font = asset_server.load("fonts/montserrat.ttf");
     let text_style = TextStyle {
@@ -68,19 +73,21 @@ fn setup(
         ..default()
     };
     // cube
-    commands.spawn((MaterialMeshBundle {
-        mesh: meshes.add(Cuboid::default()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        material: materials.add(CustomMaterial {
-            ambient_color: Vec4::new(0.1, 0.1, 0.1, 1.0),
-            diffuse_color: Vec4::new(0.4, 0.0, 0.0, 1.0),
-            specular_color: Vec4::new(1.0, 1.0, 1.0, 1.0),
-            shininess: 10.0,
+    commands.spawn((
+        MaterialMeshBundle {
+            mesh: meshes.add(Cuboid::default()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            material: materials.add(CustomMaterial {
+                ambient_color: Vec4::new(0.1, 0.1, 0.1, 1.0),
+                diffuse_color: Vec4::new(0.4, 0.0, 0.0, 1.0),
+                specular_color: Vec4::new(1.0, 1.0, 1.0, 1.0),
+                shininess: 10.0,
+                ..default()
+            }),
             ..default()
-        }),
-        ..default()
-    }, Model));
-
+        },
+        Model,
+    ));
 
     // camera
     commands.spawn(Camera3dBundle {
@@ -100,9 +107,10 @@ fn setup(
             ..default()
         })
         .with_children(|parent| {
-            parent.spawn((TextBundle::from_section(
-                "Shading: None", text_style.clone(),
-            ), ShadingText));
+            parent.spawn((
+                TextBundle::from_section("Shading: None", text_style.clone()),
+                ShadingText,
+            ));
         });
 }
 

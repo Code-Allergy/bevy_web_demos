@@ -14,72 +14,91 @@ MODULES_LIST := $(DIST_DIR)/modules.txt
 
 RUST_SRC_FILES := $(shell find src -name "*.rs")
 
-WASM_GLOB := target/wasm32-unknown-unknown/debug/*.wasm
-CARGO_FLAGS :=
+# Default values
+RELEASE := false
 
-# Uncomment to build in release mode
-WASM_GLOB := target/wasm32-unknown-unknown/release/*.wasm
-CARGO_FLAGS := --release
+# Set the WASM_BUILD_DIR and CARGO_FLAGS based on the RELEASE flag
+ifeq ($(RELEASE), true)
+    WASM_BUILD_DIR := target/wasm32-unknown-unknown/release
+    CARGO_FLAGS := --release
+else
+    WASM_BUILD_DIR := target/wasm32-unknown-unknown/debug
+    CARGO_FLAGS :=
+endif
 
+WASM_OUTPUT_FILES := $(shell find $(WASM_BUILD_DIR) -maxdepth 1 -type f -name "*.wasm")
+ASSETS := $(shell find assets -type f)
 
-all: build copy_files create_bindings generate_modules
+BINDING_FILES := $(patsubst $(WASM_BUILD_DIR)/%.wasm,$(BINDINGS_OUT_DIR)/%/$(JS_OUT_NAME).js,$(WASM_OUTPUT_FILES))
+
+DIST_FILES := $(DIST_DIR)/index.html $(DIST_DIR)/loader.js $(DIST_DIR)/style.css
+DIST_ASSETS := $(patsubst assets/%,$(ASSETS_OUT_DIR)/%,$(ASSETS))
+
+LAST_BUILD := target/last_build.timestamp
+
+.PHONY: all serve build copy_files create_bindings generate_modules clean-cargo clean-dist clean
+
+all: build copy_files create_bindings $(MODULES_LIST)
 
 serve: all
 	@echo "Starting server..."
 	cd $(DIST_DIR) && python3 -m http.server
 
-build: $(RUST_SRC_FILES)
+# Build only if Rust source files have changed or if the last build file is missing
+build: $(LAST_BUILD)
+
+$(LAST_BUILD): $(RUST_SRC_FILES)
 	@echo "Building..."
 	cargo build --all-targets --target wasm32-unknown-unknown $(CARGO_FLAGS)
+	@touch $@  # Update the timestamp
 
-# Copy the wasm files to the assets folder
-copy_files: build
-# 	@echo "Copying wasm files to $(ASSETS_OUT_DIR)"
-	mkdir -p $(WASM_TMP_DIR)
-	cp $(WASM_GLOB) $(WASM_TMP_DIR)
 
-	# Copy assets to the dist folder
-	@echo "Copying assets to $(ASSETS_OUT_DIR)"
-	mkdir -p $(ASSETS_OUT_DIR)
-	cp -r assets/* $(ASSETS_OUT_DIR)
+# COPY ALL STATIC FILES TO THE DIST DIRECTORY
+copy_files: $(DIST_FILES) $(DIST_ASSETS)
 
-	# Copy source files to the dist folder
-	@echo "Copying source files to $(CODE_OUT_DIR)"
-	mkdir -p $(CODE_OUT_DIR)
-	cp -r src/* $(CODE_OUT_DIR)
+$(DIST_DIR)/%: % | $(DIST_DIR)
+	@echo "Copying $< to $(DIST_DIR)"
+	cp $< $@
+
+$(ASSETS_OUT_DIR)/%: assets/% | $(ASSETS_OUT_DIR)
+	@echo "Copying asset $< to $(ASSETS_OUT_DIR)"
+	@mkdir -p $(dir $@)
+	cp $< $@
+
+$(DIST_DIR) $(ASSETS_OUT_DIR):
+	mkdir -p $@
+
+#
+# CREATE BINDINGS FOR WEBASSEMBLY FILES
+#
+create_bindings: $(BINDING_FILES) copy_files
+
+$(BINDINGS_OUT_DIR)/%/$(JS_OUT_NAME).js: $(WASM_BUILD_DIR)/%.wasm
+	@echo "Creating bindings for $<"
+	@mkdir -p $(dir $@)  # Ensure the output directory exists
+	wasm-bindgen --no-typescript --target web --out-dir $(BINDINGS_OUT_DIR)/$(basename $*) --out-name $(JS_OUT_NAME) $<
 	
-	@echo "Copying index.html to $(DIST_DIR)"
-	cp index.html $(DIST_DIR)
+	@if [ "$(RELEASE)" = "true" ]; then \
+		echo "Optimizing WebAssembly file with wasm-opt..."; \
+		wasm-opt -Oz $(BINDINGS_OUT_DIR)/$(basename $*)/$(JS_OUT_NAME)_bg.wasm -o $(BINDINGS_OUT_DIR)/$(basename $*)/$(JS_OUT_NAME)_bg.wasm; \
+	fi
 
-	@echo "Copying loader to $(DIST_DIR)"
-	cp loader.js $(DIST_DIR)
-
-	@echo "Copying style.css to $(DIST_DIR)"
-	cp style.css $(DIST_DIR)
-
-# Create bindings for each wasm file
-create_bindings: copy_files
-	@echo "Creating bindings..."
-	@mkdir -p $(BINDINGS_OUT_DIR)
-	find $(WASM_TMP_DIR) -type f -name "*.wasm" | while read -r wasm_file; do \
-		wasm_file_stripped=$$(basename $$wasm_file .wasm); \
-		echo "Creating bindings for $$wasm_file"; \
-		echo "Will bind at $(BINDINGS_OUT_DIR)/$$wasm_file_stripped"; \
-		mkdir -p $(BINDINGS_OUT_DIR)/$$wasm_file_stripped; \
-		wasm-bindgen --no-typescript --target web --out-dir $(BINDINGS_OUT_DIR)/$$wasm_file_stripped --out-name $(JS_OUT_NAME) $$wasm_file; \
-	done
-	rm -rf $(WASM_TMP_DIR)
-
-# Generate the modules list
-generate_modules: create_bindings
+#
+# GENERATE A LIST OF WASM MODULE BINDS
+#
+$(MODULES_LIST): $(BINDING_FILES)
 	@echo "Generating modules list..."
 	find $(BINDINGS_OUT_DIR) -name "bind.js" | sed 's|^$(DIST_DIR)/||' | sed 's|^|./|' | sort > $(MODULES_LIST)
 
+#
+# CLEAN UP
+#
+clean: clean-cargo clean-dist
 
-# Clean target
-clean:
-	@echo "Cleaning up..."
-	rm -rf $(DIST_DIR)/*
+clean-cargo:
+	@echo "Cleaning up cargo..."
 	cargo clean
 
-.PHONY: all copy_files create_bindings generate_modules clean serve
+clean-dist:
+	@echo "Cleaning up dist..."
+	rm -rf $(DIST_DIR)/*

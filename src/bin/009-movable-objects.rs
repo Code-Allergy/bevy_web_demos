@@ -1,19 +1,20 @@
 use bevy::app::{App, Startup};
 use bevy::asset::Assets;
 use bevy::color::Color;
-use bevy::DefaultPlugins;
 use bevy::math::Vec3;
 use bevy::pbr::{PbrBundle, StandardMaterial};
 use bevy::prelude::*;
-use bevy::render::mesh::VertexAttributeValues;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_demos::{DefaultPluginsWithCustomWindow};
-use web_demos::player::PlayerPlugin;
+use web_demos::DefaultPluginsWithCustomWindow;
 
 #[wasm_bindgen(js_name = sourceFile)]
-pub fn source_file() -> String { include_str!("009-movable-objects.rs").to_string() }
+pub fn source_file() -> String {
+    include_str!("009-movable-objects.rs").to_string()
+}
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "Pickup Objects".to_string() }
+pub fn demo_name() -> String {
+    "Pickup Objects".to_string()
+}
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();
