@@ -4,7 +4,10 @@ use bevy::color::Color;
 use bevy::math::Vec3;
 use bevy::pbr::{PbrBundle, StandardMaterial};
 use bevy::prelude::*;
+use bevy::render::mesh::VertexAttributeValues;
+use bevy::DefaultPlugins;
 use wasm_bindgen::prelude::wasm_bindgen;
+use web_demos::player::PlayerPlugin;
 use web_demos::DefaultPluginsWithCustomWindow;
 
 #[wasm_bindgen(js_name = sourceFile)]

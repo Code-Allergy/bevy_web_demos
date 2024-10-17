@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 pub mod player;
+pub mod overball;
 
 pub fn get_window() -> Window {
     Window {
