@@ -16,6 +16,7 @@ pub enum InGameState {
     Paused,
     PlayerDied,
     GameOver,
+    Victory,
 }
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]

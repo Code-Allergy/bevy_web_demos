@@ -1,6 +1,4 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
-
 
 #[derive(Component)]
 pub struct GameMap;
@@ -10,6 +8,16 @@ pub struct Tile {
     pub position: Vec3,
     pub activated: bool,
 }
+
+#[derive(Component)]
+pub struct PlayerCamera;
+
+// Win condition
+#[derive(Component)]
+pub struct WinningTile;
+
+#[derive(Component)]
+pub struct WinningTileTimer(pub Timer);
 
 #[derive(Component)]
 pub struct Door {
@@ -26,6 +34,3 @@ pub struct Ball {
 
 #[derive(Component)]
 pub struct Player;
-
-#[derive(Component)]
-pub struct GameOverUI;

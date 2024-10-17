@@ -6,7 +6,7 @@ use bevy::{
     app::App,
     asset::Assets,
     audio::Volume,
-    color::{palettes::basic::RED, Color},
+    color::Color,
     math::Vec3,
     pbr::{PbrBundle, StandardMaterial},
     render::mesh::PlaneMeshBuilder,
@@ -20,15 +20,15 @@ use web_demos::overball::resources::*;
 use web_demos::overball::main_menu::MainMenuPlugin;
 use web_demos::overball::pause_menu::PauseMenuPlugin;
 use web_demos::overball::game_ui::GameUIPlugin;
+use web_demos::overball::game_over::GameOverPlugin;
+use web_demos::overball::victory::VictoryPlugin;
 
+// DEBUG
+// use web_demos::overball::util::*;
 
 // Debug only on x86_64
 #[cfg(target_arch = "x86_64")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-
-// Define the play area bounds
-// Let the player clip off the playable area, but not fall off the world
-
 
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String {
@@ -48,36 +48,23 @@ pub fn start_game() {
     let mut app = App::new();
     app
         // Plugins
-        .add_plugins(RapierDebugRenderPlugin::default())
+        // .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(DefaultPluginsWithCustomWindow)
+
+        // My plugins
         .add_plugins(MainMenuPlugin)
         .add_plugins(PauseMenuPlugin)
-        .add_plugins(GameUIPlugin);
+        .add_plugins(GameUIPlugin)
+        .add_plugins(VictoryPlugin)
+        .add_plugins(GameOverPlugin);
 
-    // app.add_systems(Update, display_events); // debug events
     // States
-
     app.insert_state(AppState::Loading)
         .init_state::<InGameState>()
         .init_resource::<GameContext>();
 
-    // Debug (always run)
-    // app
-    // .add_systems(Update, debug_game_state)
-    // .add_systems(Update, debug_in_game_state);
-
-    // Configure System Sets
-    app.configure_sets(
-        Update,
-        (
-            GameplaySet::Update
-                .run_if(in_state(AppState::Game))
-                .run_if(in_state(InGameState::Playing)),
-        ),
-    );
-        // Game
-    app.configure_sets(OnEnter(AppState::Game), GameplaySet::Setup);
+    configure_system_sets(&mut app);
 
     // Add systems to sets
     app
@@ -87,19 +74,18 @@ pub fn start_game() {
             Update,
             check_audio_loaded.run_if(in_state(AppState::Loading)),
         )
+
         // Game state
         .add_systems(
             OnEnter(AppState::Game),
             (
-                initial_game_setup,
-                setup_background_music, // TODO we should have a method to disable audio
+                reset_transition,
+                setup_background_music.before(reset_transition), // TODO we should have a method to disable audio
             ),
         )
         .add_systems(
             OnEnter(InGameState::Reset),
             (
-                // setup_game_ui,
-                // setup_game_camera,
                 setup_map,
                 setup_player,
                 clear_context,
@@ -109,26 +95,24 @@ pub fn start_game() {
         .add_systems(
             Update,
             (
+                // Player
                 move_player_when_pressing_keys,
                 check_player_out_of_bounds,
+
+                // Door
+                handle_door_collisions,
+                update_door_movement,
+
+                // Tile
                 detect_ball_on_tile,
+                check_winning_tile,
             )
                 .in_set(GameplaySet::Update)
                 .run_if(in_state(InGameState::Playing)),
         )
         // Player Died
         .add_systems(OnEnter(InGameState::PlayerDied), handle_player_death)
-        // Game Over
-        .add_systems(
-            OnEnter(InGameState::GameOver),
-            (setup_game_over_ui, play_gameover_sound),
-        )
-        .add_systems(
-            Update,
-            handle_game_over_input.run_if(in_state(InGameState::GameOver)),
-        )
-        .add_systems(OnExit(InGameState::GameOver), despawn_player_and_map);
-    // .add_systems(Update, check_death_timer.run_if(in_state(InGameState::PlayerDied)));
+    ;
 
     #[cfg(target_arch = "x86_64")]
     app.add_plugins(WorldInspectorPlugin::new());
@@ -136,15 +120,22 @@ pub fn start_game() {
     app.run();
 }
 
+fn configure_system_sets(app: &mut App) {
+    app.configure_sets(
+        Update,
+        (
+            GameplaySet::Update
+                .run_if(in_state(AppState::Game))
+                .run_if(in_state(InGameState::Playing)),
+        ),
+    );
+    app.configure_sets(OnEnter(AppState::Game), GameplaySet::Setup);
+}
+
 // Transition system to start game when we enter AppState::Game
-fn initial_game_setup(
-    mut commands: Commands,
+fn reset_transition(
     mut next_state: ResMut<NextState<InGameState>>,
-    asset_server: Res<AssetServer>,
 ) {
-    setup_game_camera(&mut commands);
-    // setup_game_ui(&mut commands, asset_server);
-    // Transition to the Reset state to set up the actual game world
     next_state.set(InGameState::Reset);
 }
 
@@ -200,6 +191,44 @@ fn setup_map(
             });
         });
 
+    // WinningTile Platform
+    commands.spawn((
+        Transform::from_xyz(15.0, 0.0, 0.0),
+        GlobalTransform::default(),
+        Collider::cuboid(5.0, 0.1, 2.5),
+        Restitution::coefficient(0.9),
+        InheritedVisibility::default(),
+        GameMap,
+    ))
+    .with_children(|parent| {
+        parent.spawn(PbrBundle {
+            mesh: meshes.add(PlaneMeshBuilder::from_size(Vec2::new(10.0, 5.0))),
+            material: materials.add(StandardMaterial {
+                base_color: Color::srgb(1.0, 1.0, 0.0),
+                ..default()
+            }),
+            transform: Transform::from_xyz(0.0, 0.1, 0.0),
+            ..default()
+        });
+    });
+
+    // Winning Tile
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(PlaneMeshBuilder::from_length(4.0)),
+            material: materials.add(StandardMaterial {
+                base_color: Color::srgb(0.0, 1.0, 0.0),
+                ..default()
+            }),
+            transform: Transform::from_translation(Vec3::new(15.0, 0.1, 0.0)),
+            ..default()
+        },
+        WinningTile,
+        GameMap,
+    ));
+
+
+    // Tiles
     for x in -5..=5 {
         for z in -5..=5 {
             let position = Vec3::new(x as f32, 0.1, z as f32);
@@ -222,9 +251,10 @@ fn setup_map(
         }
     }
 
+    // Door
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
+            mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 5.0))),
             material: materials.add(StandardMaterial {
                 base_color: Color::srgb(0.0, 0.0, 1.0),
                 ..default()
@@ -232,15 +262,16 @@ fn setup_map(
             transform: Transform::from_translation(DOOR_POSITION),
             ..default()
         },
-        Collider::cuboid(0.5, 0.5, 0.5),
+        Collider::cuboid(0.5, 0.5, 2.5),
         Door {
             required_score: DOOR_REQUIRED_SCORE,
             is_open: false,
         },
+        GameMap,
     ));
 
     // light
-    commands.spawn(PointLightBundle {
+    commands.spawn((PointLightBundle {
         point_light: PointLight {
             intensity: 100_000.0,
             shadows_enabled: true,
@@ -249,8 +280,10 @@ fn setup_map(
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
 
         ..default()
-    });
+    }, GameMap));
 }
+
+
 fn setup_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -283,6 +316,12 @@ fn setup_player(
         })
         .insert(ActiveEvents::COLLISION_EVENTS);
 
+    // Player camera
+    commands.spawn((Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
+        ..default()
+    }, PlayerCamera));
+
     game_state.set(AppState::Game);
     gameplay_state.set(InGameState::Playing);
 }
@@ -294,14 +333,6 @@ fn setup_background_music(mut commands: Commands, audio_assets: Res<AudioAssets>
             volume: Volume::new(0.2),
             ..default()
         },
-    });
-}
-
-// this will later be spawned with the player, as it will track the player from behind
-fn setup_game_camera(commands: &mut Commands) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
-        ..default()
     });
 }
 
@@ -340,85 +371,85 @@ struct PlayerBundle {
     rigid_body: RigidBody,
 }
 
-fn despawn_player_and_map(
+#[derive(Component)]
+struct DoorMovement {
+    speed: f32,
+}
+
+fn handle_door_collisions(
     mut commands: Commands,
-    player_query: Query<Entity, With<Player>>,
-    map_query: Query<Entity, With<GameMap>>,
+    mut collision_events: EventReader<CollisionEvent>,
+    context: Res<GameContext>,
+    mut ball_query: Query<(&mut Ball, &Transform), With<Player>>,
+    mut door_query: Query<(Entity, &Door)>,
 ) {
-    for entity in player_query.iter() {
-        commands.entity(entity).despawn_recursive();
-    }
-    for entity in map_query.iter() {
-        commands.entity(entity).despawn_recursive();
+    for collision_event in collision_events.read() {
+        if let CollisionEvent::Started(entity1, entity2, _) = collision_event {
+            if let Ok((mut ball, ball_transform)) = ball_query.get_mut(*entity2) {
+                if let Ok((door_entity, door)) = door_query.get_mut(*entity1) {
+                    ball.velocity = Vec3::ZERO;
+                    info!("Ball collided with door at position: {:?}", ball_transform.translation);
+                    if context.score > door.required_score {
+                        commands.entity(door_entity).insert(DoorMovement { speed: 1.0 });
+                    } else {
+                        // alert the player that they need more points
+                    }
+                }
+            }
+        }
     }
 }
 
-// Reset player's position to the center or a spawn point
-fn play_gameover_sound(mut commands: Commands, audio_assets: Res<AudioAssets>) {
-    commands.spawn(AudioBundle {
-        source: audio_assets.game_over_sound.clone(),
-        settings: PlaybackSettings {
-            volume: Volume::new(0.2),
-            ..default()
-        },
-    });
+fn update_door_movement(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Transform, &DoorMovement)>,
+) {
+    for (entity, mut transform, door_movement) in query.iter_mut() {
+        transform.translation.y -= door_movement.speed * time.delta_seconds();
+        if transform.translation.y < 0.0 {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
 }
 
-// TODO
-fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("fonts/montserrat.ttf");
-    let text_style = TextStyle {
-        font: font.clone(),
-        font_size: 60.0,
-        color: Color::WHITE,
-    };
-    let button_style = TextStyle {
-        font,
-        font_size: 40.0,
-        color: Color::BLACK,
-    };
 
-    commands
-        .spawn((
-            NodeBundle {
-                style: Style {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    flex_direction: FlexDirection::Column,
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                background_color: Color::srgba(0.0, 0.0, 0.0, 0.8).into(),
-                ..default()
-            },
-            GameOverUI,
-        ))
-        .with_children(|parent| {
-            parent.spawn(TextBundle::from_section("Game Over!", text_style.clone()));
-            parent
-                .spawn(ButtonBundle {
-                    style: Style {
-                        width: Val::Px(250.0),
-                        height: Val::Px(65.0),
-                        border: UiRect::all(Val::Px(5.0)),
-                        padding: UiRect {
-                            left: Val::Px(10.0),
-                            right: Val::Px(10.0),
-                            top: Val::Px(5.0),
-                            bottom: Val::Px(5.0),
-                        },
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..default()
-                    },
-                    border_color: BorderColor(Color::BLACK),
-                    border_radius: BorderRadius::MAX,
-                    background_color: NORMAL_BUTTON.into(),
-                    ..default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section("Restart", text_style.clone()));
-                });
-        });
+
+fn check_winning_tile(
+    mut commands: Commands,
+    time: Res<Time>,
+    player_query: Query<&Transform, With<Player>>,
+    winning_tile_query: Query<&Transform, With<WinningTile>>,
+    mut timer_query: Query<(Entity, &mut WinningTileTimer)>,
+    mut next_state: ResMut<NextState<InGameState>>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        let player_position = player_transform.translation;
+
+        for winning_tile_transform in winning_tile_query.iter() {
+            let tile_position = winning_tile_transform.translation;
+
+            // Check if the player is on the winning tile
+            if (player_position.x - tile_position.x).abs() < 2.5 &&
+               (player_position.z - tile_position.z).abs() < 5.0 {
+                // If the timer already exists, update it
+                if let Ok((entity, mut timer)) = timer_query.get_single_mut() {
+                    timer.0.tick(time.delta());
+                    if timer.0.finished() {
+                        next_state.set(InGameState::Victory);
+                        commands.entity(entity).despawn(); // Remove the timer entity
+                    }
+                } else {
+                    // If the timer doesn't exist, create it
+                    commands.spawn(WinningTileTimer(Timer::from_seconds(2.0, TimerMode::Once)));
+                }
+                return;
+            }
+        }
+    }
+
+    // If the player is not on the winning tile, reset the timer
+    if let Ok((entity, _)) = timer_query.get_single() {
+        commands.entity(entity).despawn();
+    }
 }

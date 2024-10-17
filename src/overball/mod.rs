@@ -3,7 +3,12 @@ pub mod systems;
 pub mod resources;
 pub mod states;
 pub mod constants;
+pub mod util;
+
+// Plugins
 pub mod main_menu;
 pub mod pause_menu;
 pub mod game_ui;
 pub mod player;
+pub mod game_over;
+pub mod victory;

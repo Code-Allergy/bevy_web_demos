@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
 use super::components::*;
 use super::resources::*;
 use super::states::*;
@@ -13,19 +12,14 @@ pub fn move_player_when_pressing_keys(
     for (mut transform, mut ball) in query.iter_mut() {
         let mut direction = Vec3::ZERO;
 
-        // Detect movement directions based on key presses
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            direction.z -= 1.0; // Forward
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            direction.z += 1.0; // Backward
-        }
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            direction.x -= 1.0; // Left
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            direction.x += 1.0; // Right
-        }
+        // FORWARDS
+        if keyboard_input.pressed(KeyCode::KeyW) { direction.z -= 1.0; }
+        // BACKWARDS
+        if keyboard_input.pressed(KeyCode::KeyS) { direction.z += 1.0; }
+        // LEFT
+        if keyboard_input.pressed(KeyCode::KeyA) { direction.x -= 1.0; }
+        // RIGHT
+        if keyboard_input.pressed(KeyCode::KeyD) { direction.x += 1.0; }
 
         // Normalize direction if there is movement
         if direction != Vec3::ZERO {
@@ -49,9 +43,10 @@ pub fn move_player_when_pressing_keys(
         }
 
         // Decrease velocity slowly each frame
-        ball.velocity *= DAMPING_FACTOR.powf(time.delta_seconds()); // Adjust the damping factor as needed
+        ball.velocity *= DAMPING_FACTOR.powf(time.delta_seconds());
     }
 }
+
 pub fn detect_ball_on_tile(
     ball_query: Query<&Transform, With<Player>>,
     mut tile_query: Query<(&Transform, &mut Tile, &mut Handle<StandardMaterial>)>,
@@ -61,7 +56,7 @@ pub fn detect_ball_on_tile(
     if let Ok(ball_transform) = ball_query.get_single() {
         let ball_position = ball_transform.translation;
 
-        for (tile_transform, mut tile, mut material_handle) in tile_query.iter_mut() {
+        for (tile_transform, mut tile, material_handle) in tile_query.iter_mut() {
             let tile_position = tile_transform.translation;
 
             // Check if the ball is on top of the tile
@@ -70,9 +65,8 @@ pub fn detect_ball_on_tile(
                 if !tile.activated {
                     tile.activated = true;
                     context.score += 1;
-                    println!("Ball is on tile at position: {:?}. Score: {}", tile_position, context.score);
 
-                    // Change the tile color to green
+                    // Change activated tile to be green
                     if let Some(material) = materials.get_mut(&*material_handle) {
                         material.base_color = Color::srgb(0.0, 1.0, 0.0);
                     }
@@ -82,51 +76,7 @@ pub fn detect_ball_on_tile(
     }
 }
 
-pub fn detect_door_interaction(
-    ball_query: Query<&Transform, With<Player>>,
-    mut door_query: Query<(&mut Transform, &mut Door, &mut Collider)>,
-    context: Res<GameContext>,
-) {
-    if let Ok(ball_transform) = ball_query.get_single() {
-        let ball_position = ball_transform.translation;
 
-        for (mut door_transform, mut door, mut collider) in door_query.iter_mut() {
-            let door_position = door_transform.translation;
-
-            // Check if the ball is close enough to the door to interact
-            if (ball_position - door_position).length() < 1.0 {
-                if context.score >= door.required_score && !door.is_open {
-                    door.is_open = true;
-                    door_transform.translation.y -= 1.0; // Move the door down into the floor
-                    *collider = Collider::cuboid(0.5, 0.0, 0.5); // Disable the collider by setting its height to 0
-                    println!("Door opened! Score: {}", context.score);
-                }
-            }
-        }
-    }
-}
-
-// pub fn handle_collisions(
-//     mut collision_events: EventReader<CollisionEvent>,
-//     mut ball_query: Query<(&mut Ball, &Transform), With<Player>>,
-//     door_query: Query<Entity, With<Door>>,
-// ) {
-//     for collision_event in collision_events.iter() {
-//         if let CollisionEvent::Started(entity1, entity2, _) = collision_event {
-//             if let Ok((mut ball, ball_transform)) = ball_query.get_mut(*entity1) {
-//                 if door_query.get(*entity2).is_ok() {
-//                     ball.velocity = Vec3::ZERO;
-//                     println!("Ball collided with door at position: {:?}", ball_transform.translation);
-//                 }
-//             } else if let Ok((mut ball, ball_transform)) = ball_query.get_mut(*entity2) {
-//                 if door_query.get(*entity1).is_ok() {
-//                     ball.velocity = Vec3::ZERO;
-//                     println!("Ball collided with door at position: {:?}", ball_transform.translation);
-//                 }
-//             }
-//         }
-//     }
-// }
 
 
 
@@ -165,36 +115,23 @@ pub fn handle_player_death(
     }
 }
 
-pub fn handle_game_over_input(
-    mut commands: Commands,
-    mut in_game_state: ResMut<NextState<InGameState>>,
-    mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<Button>),
-    >,
-    game_over_ui: Query<Entity, With<GameOverUI>>,
-    mut context: ResMut<GameContext>,
-) {
-    for (interaction, mut color) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                // Restart the game
-                // Remove the game over UI
-                *color = PRESSED_BUTTON.into();
-                for entity in game_over_ui.iter() {
-                    commands.entity(entity).despawn_recursive();
-                }
 
-                // Reset player lives
-                context.lives = PLAYER_LIVES;
-                in_game_state.set(InGameState::Reset);
-            }
-            Interaction::Hovered => {
-                *color = HOVERED_BUTTON.into();
-            }
-            Interaction::None => {
-                *color = NORMAL_BUTTON.into();
-            }
-        }
+
+pub fn despawn_player_and_map(
+    mut commands: Commands,
+    player_query: Query<Entity, With<Player>>,
+    player_camera_query: Query<Entity, With<PlayerCamera>>,
+    map_query: Query<Entity, With<GameMap>>,
+) {
+    for entity in player_query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    for entity in player_camera_query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    for entity in map_query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }

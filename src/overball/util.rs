@@ -7,7 +7,7 @@ use super::states::*;
 
 // Debug system for GameState
 // Debug system for GameState with state change detection
-fn debug_game_state(state: ResMut<State<AppState>>, mut previous_state: Local<Option<AppState>>) {
+pub fn debug_game_state(state: ResMut<State<AppState>>, mut previous_state: Local<Option<AppState>>) {
     if let Some(prev) = previous_state.as_ref() {
         if *prev != **state {
             info!("GameState changed from {:?} to {:?}", prev, state);
@@ -19,7 +19,7 @@ fn debug_game_state(state: ResMut<State<AppState>>, mut previous_state: Local<Op
 }
 
 // Debug system for InGameState with state change detection
-fn debug_in_game_state(
+pub fn debug_in_game_state(
     state: ResMut<State<InGameState>>,
     mut previous_state: Local<Option<InGameState>>,
 ) {
@@ -33,7 +33,7 @@ fn debug_in_game_state(
     }
 }
 /* A system that displays the events. */
-fn display_events(
+pub fn display_events(
     mut collision_events: EventReader<CollisionEvent>,
     mut contact_force_events: EventReader<ContactForceEvent>,
 ) {
