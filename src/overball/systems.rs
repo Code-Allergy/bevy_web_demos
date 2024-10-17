@@ -7,6 +7,7 @@ use super::constants::*;
 
 pub fn move_player_when_pressing_keys(
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
 ) {
     for (mut transform, mut ball) in query.iter_mut() {
@@ -29,15 +30,15 @@ pub fn move_player_when_pressing_keys(
         // Normalize direction if there is movement
         if direction != Vec3::ZERO {
             direction = direction.normalize();
-            ball.velocity += direction * MOVEMENT_SPEED; // Scale by movement speed
+            ball.velocity += direction * MOVEMENT_SPEED * time.delta_seconds(); // Scale by movement speed
         }
 
         // Apply velocity to position
         let movement = ball.velocity; // Get the movement vector
-        transform.translation += movement;
+        transform.translation += movement * time.delta_seconds();
 
         // Calculate the amount of rotation based on the distance moved
-        let distance = movement.length();
+        let distance = movement.length() * time.delta_seconds();
         let rotation_axis = Vec3::new(-movement.z, 0.0, movement.x).normalize(); // Rotation axis perpendicular to movement
 
         if distance > 0.0 {
@@ -48,7 +49,7 @@ pub fn move_player_when_pressing_keys(
         }
 
         // Decrease velocity slowly each frame
-        ball.velocity *= DAMPING_FACTOR; // Adjust the damping factor as needed
+        ball.velocity *= DAMPING_FACTOR.powf(time.delta_seconds()); // Adjust the damping factor as needed
     }
 }
 pub fn detect_ball_on_tile(
@@ -127,14 +128,23 @@ pub fn detect_door_interaction(
 //     }
 // }
 
-// pub fn update_score_text(
-//     context: Res<GameContext>,
-//     mut query: Query<&mut Text, With<ScoreText>>,
-// ) {
-//     for mut text in query.iter_mut() {
-//         text.sections[0].value = format!("Score: {}", context.score);
-//     }
-// }
+
+
+pub fn check_player_out_of_bounds(
+    mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
+    mut next_state: ResMut<NextState<InGameState>>,
+) {
+    for (transform, _ball) in query.iter_mut() {
+        let position = transform.translation;
+        // Check if the player is out of bounds
+        if position.x < MIN_X || position.x > MAX_X ||
+            position.y < MIN_Y || position.y > MAX_Y ||
+            position.z < MIN_Z || position.z > MAX_Z
+        {
+            next_state.set(InGameState::PlayerDied);
+        }
+    }
+}
 
 pub fn handle_player_death(
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
@@ -155,22 +165,6 @@ pub fn handle_player_death(
     }
 }
 
-pub fn check_player_out_of_bounds(
-    mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
-    mut next_state: ResMut<NextState<InGameState>>,
-) {
-    for (transform, _ball) in query.iter_mut() {
-        let position = transform.translation;
-        // Check if the player is out of bounds
-        if position.x < MIN_X || position.x > MAX_X ||
-            position.y < MIN_Y || position.y > MAX_Y ||
-            position.z < MIN_Z || position.z > MAX_Z
-        {
-            next_state.set(InGameState::PlayerDied);
-        }
-    }
-}
-
 pub fn handle_game_over_input(
     mut commands: Commands,
     mut in_game_state: ResMut<NextState<InGameState>>,
@@ -186,23 +180,20 @@ pub fn handle_game_over_input(
             Interaction::Pressed => {
                 // Restart the game
                 // Remove the game over UI
+                *color = PRESSED_BUTTON.into();
                 for entity in game_over_ui.iter() {
                     commands.entity(entity).despawn_recursive();
                 }
 
                 // Reset player lives
                 context.lives = PLAYER_LIVES;
-
                 in_game_state.set(InGameState::Reset);
-
-                // You might want to reset other game elements here
-                // For example, resetting the player's position, clearing enemies, etc.
             }
             Interaction::Hovered => {
-                *color = Color::srgba(0.9, 0.9, 0.9, 1.0).into();
+                *color = HOVERED_BUTTON.into();
             }
             Interaction::None => {
-                *color = Color::srgba(0.8, 0.8, 0.8, 1.0).into();
+                *color = NORMAL_BUTTON.into();
             }
         }
     }
