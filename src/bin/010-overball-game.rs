@@ -12,6 +12,12 @@ use bevy::{
     render::mesh::PlaneMeshBuilder,
 };
 use web_demos::DefaultPluginsWithCustomWindow;
+use web_demos::overball::components::*;
+use web_demos::overball::systems::*;
+use web_demos::overball::constants::*;
+use web_demos::overball::states::*;
+use web_demos::overball::resources::*;
+
 
 // Debug only on x86_64
 #[cfg(target_arch = "x86_64")]
@@ -19,22 +25,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 // Define the play area bounds
 // Let the player clip off the playable area, but not fall off the world
-const MIN_X: f32 = -20.0;
-const MAX_X: f32 = 20.0;
-const MIN_Y: f32 = -10.0; // Keep Y > 0 to prevent falling out of the world
-const MAX_Y: f32 = 10.0;
-const MIN_Z: f32 = -20.0;
-const MAX_Z: f32 = 20.0;
 
-const PLAYER_LIVES: u32 = 0;
-
-const MOVEMENT_SPEED: f32 = 0.001;
-const DAMPING_FACTOR: f32 = 0.995;
-
-// UI Style
-const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
 
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String {
@@ -49,41 +40,6 @@ fn main() {
     start_game();
 }
 
-#[derive(Resource, Debug)]
-struct GameContext {
-    pub lives: u32,
-    pub score: u32,
-    pub level: u32,
-}
-
-impl Default for GameContext {
-    fn default() -> Self {
-        GameContext {
-            lives: PLAYER_LIVES,
-            score: 0,
-            level: 1,
-        }
-    }
-}
-
-#[derive(States, Debug, Clone, PartialEq, Eq, Hash)]
-enum AppState {
-    Loading,
-    Title,
-    Game,
-}
-
-#[derive(States, Debug, Clone, Default, PartialEq, Eq, Hash)]
-enum InGameState {
-    #[default]
-    NotInGame,
-    Reset,
-    Playing,
-    Paused,
-    PlayerDied,
-    GameOver,
-}
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 enum MainMenuSet {
     Setup,
@@ -95,13 +51,6 @@ enum MainMenuSet {
 enum GameplaySet {
     Setup,
     Update,
-}
-
-// Preload audio assets
-#[derive(Resource)]
-struct AudioAssets {
-    bg_music: Handle<AudioSource>,
-    game_over_sound: Handle<AudioSource>,
 }
 
 #[wasm_bindgen(js_name = startGame)]
@@ -179,12 +128,18 @@ pub fn start_game() {
                 // setup_game_camera,
                 setup_map,
                 setup_player,
+                clear_context,
             )
                 .in_set(GameplaySet::Setup),
         )
         .add_systems(
             Update,
-            (move_player_when_pressing_keys, check_player_out_of_bounds)
+            (
+                move_player_when_pressing_keys,
+                check_player_out_of_bounds,
+                detect_ball_on_tile,
+                update_score_text,
+            )
                 .in_set(GameplaySet::Update)
                 .run_if(in_state(InGameState::Playing)),
         )
@@ -220,9 +175,6 @@ fn initial_game_setup(
 ) {
     setup_game_camera(&mut commands);
     setup_game_ui(&mut commands, asset_server);
-    // Set up any persistent game resources or one-time initializations
-    // ...
-
     // Transition to the Reset state to set up the actual game world
     next_state.set(InGameState::Reset);
 }
@@ -278,6 +230,46 @@ fn setup_map(
                 ..default()
             });
         });
+
+    for x in -5..=5 {
+        for z in -5..=5 {
+            let position = Vec3::new(x as f32, 0.1, z as f32);
+            commands.spawn((
+                PbrBundle {
+                    mesh: meshes.add(PlaneMeshBuilder::from_length(0.5)),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::srgb(0.5, 0.5, 0.5),
+                        ..default()
+                    }),
+                    transform: Transform::from_translation(position),
+                    ..default()
+                },
+                Tile {
+                    position,
+                    activated: false,
+                },
+                GameMap,
+            ));
+        }
+    }
+
+    let door_position = Vec3::new(0.0, 0.5, 10.5);
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
+            material: materials.add(StandardMaterial {
+                base_color: Color::srgb(0.0, 0.0, 1.0),
+                ..default()
+            }),
+            transform: Transform::from_translation(door_position),
+            ..default()
+        },
+        Collider::cuboid(0.5, 0.5, 0.5),
+        Door {
+            required_score: 10,
+            is_open: false,
+        },
+    ));
 
     // light
     commands.spawn(PointLightBundle {
@@ -369,7 +361,17 @@ fn setup_game_ui(commands: &mut Commands, asset_server: Res<AssetServer>) {
                 TextBundle::from_section(format!("Lives: {}", PLAYER_LIVES), text_style.clone()),
                 LivesText,
             ));
+            parent.spawn((
+                TextBundle::from_section("Score: 0".to_string(), text_style.clone()),
+                ScoreText,
+            ));
         });
+}
+
+fn clear_context(
+    mut context: ResMut<GameContext>,
+) {
+    context.reset();
 }
 
 // BEVY CODE
@@ -381,10 +383,6 @@ struct BallProperties {
     velocity: Vec3,
 }
 
-// UI components
-#[derive(Component)]
-struct LivesText;
-
 impl Default for BallProperties {
     fn default() -> Self {
         BallProperties {
@@ -395,16 +393,6 @@ impl Default for BallProperties {
     }
 }
 
-#[derive(Component)]
-struct Ball {
-    pub position: Vec3,
-    pub velocity: Vec3,
-    pub radius: f32,
-}
-
-#[derive(Component)]
-struct Player;
-
 #[derive(Bundle)]
 struct PlayerBundle {
     player: Player,
@@ -413,56 +401,6 @@ struct PlayerBundle {
     collider: Collider,
     restitution: Restitution,
     rigid_body: RigidBody,
-}
-
-#[derive(Component)]
-struct GameMap;
-
-fn move_player_when_pressing_keys(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
-) {
-    for (mut transform, mut ball) in query.iter_mut() {
-        let mut direction = Vec3::ZERO;
-
-        // Detect movement directions based on key presses
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            direction.z -= 1.0; // Forward
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            direction.z += 1.0; // Backward
-        }
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            direction.x -= 1.0; // Left
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            direction.x += 1.0; // Right
-        }
-
-        // Normalize direction if there is movement
-        if direction != Vec3::ZERO {
-            direction = direction.normalize();
-            ball.velocity += direction * MOVEMENT_SPEED; // Scale by movement speed
-        }
-
-        // Apply velocity to position
-        let movement = ball.velocity; // Get the movement vector
-        transform.translation += movement;
-
-        // Calculate the amount of rotation based on the distance moved
-        let distance = movement.length();
-        let rotation_axis = Vec3::new(-movement.z, 0.0, movement.x).normalize(); // Rotation axis perpendicular to movement
-
-        if distance > 0.0 {
-            // Rotate the ball around the axis perpendicular to movement
-            let rotation_angle = -distance / ball.radius; // The amount to rotate
-            let rotation_quat = Quat::from_axis_angle(rotation_axis, rotation_angle);
-            transform.rotation = rotation_quat * transform.rotation;
-        }
-
-        // Decrease velocity slowly each frame
-        ball.velocity *= DAMPING_FACTOR; // Adjust the damping factor as needed
-    }
 }
 
 fn despawn_player_and_map(
@@ -478,63 +416,11 @@ fn despawn_player_and_map(
     }
 }
 
-fn handle_player_death(
-    mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
-    mut context: ResMut<GameContext>,
-    mut lives_text: Query<&mut Text, With<LivesText>>,
-    mut game_state: ResMut<NextState<InGameState>>,
-) {
-    for (mut transform, mut ball) in query.iter_mut() {
-        // Decrease lives
-        if context.lives == 0 {
-            game_state.set(InGameState::GameOver);
-            return;
-        }
-        context.lives -= 1;
-
-        // Update the UI text // TODO move this out
-        for mut text in lives_text.iter_mut() {
-            text.sections[0].value = format!("Lives: {}", context.lives);
-        }
-
-        transform.translation = Vec3::new(0.0, 1.0, 0.0);
-        ball.velocity = Vec3::ZERO;
-
-        game_state.set(InGameState::Playing);
-    }
-}
-
-fn check_player_out_of_bounds(
-    mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
-    mut next_state: ResMut<NextState<InGameState>>,
-) {
-    for (transform, _ball) in query.iter_mut() {
-        let position = transform.translation;
-        // Check if the player is out of bounds
-        if position.x < MIN_X
-            || position.x > MAX_X
-            || position.y < MIN_Y
-            || position.y > MAX_Y
-            || position.z < MIN_Z
-            || position.z > MAX_Z
-        {
-            next_state.set(InGameState::PlayerDied);
-        }
-    }
-}
-
 // Reset player's position to the center or a spawn point
-
-#[derive(Component)]
-struct ActivationTile {
-    position: Vec3,
-    activated: bool,
-}
 
 // MAIN MENU //
 
-#[derive(Component)]
-struct MainMenu;
+
 fn setup_main_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/montserrat.ttf");
     let text_style = TextStyle {
@@ -543,7 +429,7 @@ fn setup_main_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     };
 
-    commands.spawn((Camera2dBundle::default(), MainMenu));
+    commands.spawn((Camera2dBundle::default(), MainMenuUI));
 
     commands
         .spawn((
@@ -558,7 +444,7 @@ fn setup_main_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 background_color: BackgroundColor::from(Color::NONE),
                 ..Default::default()
             },
-            MainMenu,
+            MainMenuUI,
         ))
         .with_children(|parent| {
             parent
@@ -602,7 +488,7 @@ fn setup_main_menu_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-fn despawn_main_menu(mut commands: Commands, query: Query<Entity, With<MainMenu>>) {
+fn despawn_main_menu(mut commands: Commands, query: Query<Entity, With<MainMenuUI>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
@@ -653,9 +539,6 @@ fn play_gameover_sound(mut commands: Commands, audio_assets: Res<AudioAssets>) {
     });
 }
 
-// IGNORE
-#[derive(Component)]
-struct GameOverUI;
 
 // TODO
 fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -706,63 +589,6 @@ fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     parent.spawn(TextBundle::from_section("Restart", button_style));
                 });
         });
-}
-
-// TODO
-fn handle_game_over_input(
-    mut commands: Commands,
-    mut in_game_state: ResMut<NextState<InGameState>>,
-    mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<Button>),
-    >,
-    game_over_ui: Query<Entity, With<GameOverUI>>,
-    mut context: ResMut<GameContext>,
-) {
-    for (interaction, mut color) in &mut interaction_query {
-        match *interaction {
-            Interaction::Pressed => {
-                // Restart the game
-                // Remove the game over UI
-                for entity in game_over_ui.iter() {
-                    commands.entity(entity).despawn_recursive();
-                }
-
-                // Reset player lives
-                context.lives = PLAYER_LIVES;
-
-                in_game_state.set(InGameState::Reset);
-
-                // You might want to reset other game elements here
-                // For example, resetting the player's position, clearing enemies, etc.
-            }
-            Interaction::Hovered => {
-                *color = Color::srgba(0.9, 0.9, 0.9, 1.0).into();
-            }
-            Interaction::None => {
-                *color = Color::srgba(0.8, 0.8, 0.8, 1.0).into();
-            }
-        }
-    }
-}
-
-// Pause Menu
-fn pause_game_input(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    current_state: Res<State<InGameState>>,
-    mut next_state: ResMut<NextState<InGameState>>,
-) {
-    if keyboard_input.just_pressed(KeyCode::Escape) {
-        match current_state.get() {
-            InGameState::Playing => {
-                next_state.set(InGameState::Paused);
-            }
-            InGameState::Paused => {
-                next_state.set(InGameState::Playing);
-            }
-            _ => {}
-        }
-    }
 }
 
 fn setup_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
