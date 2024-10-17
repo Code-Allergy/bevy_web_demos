@@ -84,7 +84,7 @@ pub fn detect_ball_on_tile(
 pub fn detect_door_interaction(
     ball_query: Query<&Transform, With<Player>>,
     mut door_query: Query<(&mut Transform, &mut Door, &mut Collider)>,
-    score: Res<Score>,
+    context: Res<GameContext>,
 ) {
     if let Ok(ball_transform) = ball_query.get_single() {
         let ball_position = ball_transform.translation;
@@ -94,11 +94,11 @@ pub fn detect_door_interaction(
 
             // Check if the ball is close enough to the door to interact
             if (ball_position - door_position).length() < 1.0 {
-                if score.0 >= door.required_score && !door.is_open {
+                if context.score >= door.required_score && !door.is_open {
                     door.is_open = true;
                     door_transform.translation.y -= 1.0; // Move the door down into the floor
                     *collider = Collider::cuboid(0.5, 0.0, 0.5); // Disable the collider by setting its height to 0
-                    println!("Door opened! Score: {}", score.0);
+                    println!("Door opened! Score: {}", context.score);
                 }
             }
         }
@@ -127,38 +127,31 @@ pub fn detect_door_interaction(
 //     }
 // }
 
-pub fn update_score_text(
-    context: Res<GameContext>,
-    mut query: Query<&mut Text, With<ScoreText>>,
-) {
-    for mut text in query.iter_mut() {
-        text.sections[0].value = format!("Score: {}", context.score);
-    }
-}
+// pub fn update_score_text(
+//     context: Res<GameContext>,
+//     mut query: Query<&mut Text, With<ScoreText>>,
+// ) {
+//     for mut text in query.iter_mut() {
+//         text.sections[0].value = format!("Score: {}", context.score);
+//     }
+// }
 
 pub fn handle_player_death(
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
     mut context: ResMut<GameContext>,
-    mut lives_text: Query<&mut Text, With<LivesText>>,
     mut game_state: ResMut<NextState<InGameState>>,
 ) {
     for (mut transform, mut ball) in query.iter_mut() {
-        // Decrease lives
         if context.lives == 0 {
             game_state.set(InGameState::GameOver);
-            return;
+        } else {
+            // play respawn sound
+            context.lives -= 1;
+            transform.translation = Vec3::new(0.0, 1.0, 0.0);
+            ball.velocity = Vec3::ZERO;
+            game_state.set(InGameState::Playing);
         }
-        context.lives -= 1;
 
-        // Update the UI text // TODO move this out
-        for mut text in lives_text.iter_mut() {
-            text.sections[0].value = format!("Lives: {}", context.lives);
-        }
-
-        transform.translation = Vec3::new(0.0, 1.0, 0.0);
-        ball.velocity = Vec3::ZERO;
-
-        game_state.set(InGameState::Playing);
     }
 }
 
@@ -174,24 +167,6 @@ pub fn check_player_out_of_bounds(
             position.z < MIN_Z || position.z > MAX_Z
         {
             next_state.set(InGameState::PlayerDied);
-        }
-    }
-}
-
-pub fn pause_game_input(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    current_state: Res<State<InGameState>>,
-    mut next_state: ResMut<NextState<InGameState>>,
-) {
-    if keyboard_input.just_pressed(KeyCode::Escape) {
-        match current_state.get() {
-            InGameState::Playing => {
-                next_state.set(InGameState::Paused);
-            }
-            InGameState::Paused => {
-                next_state.set(InGameState::Playing);
-            }
-            _ => {}
         }
     }
 }

@@ -13,6 +13,9 @@ pub const PLAYER_LIVES: u32 = 0;
 pub const MOVEMENT_SPEED: f32 = 0.001;
 pub const DAMPING_FACTOR: f32 = 0.995;
 
+pub const DOOR_POSITION: Vec3 = Vec3::new(0.0, 0.5, 10.5);
+pub const DOOR_REQUIRED_SCORE: u32 = 10;
+
 // UI Style
 pub const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 pub const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);

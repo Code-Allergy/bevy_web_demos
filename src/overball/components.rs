@@ -27,15 +27,5 @@ pub struct Ball {
 #[derive(Component)]
 pub struct Player;
 
-// UI components
-#[derive(Component)]
-pub struct LivesText;
-
-#[derive(Component)]
-pub struct ScoreText;
-
-#[derive(Component)]
-pub struct MainMenuUI;
-
 #[derive(Component)]
 pub struct GameOverUI;
