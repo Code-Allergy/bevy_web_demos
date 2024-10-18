@@ -31,4 +31,7 @@ impl GameContext {
 pub struct AudioAssets {
     pub bg_music: Handle<AudioSource>,
     pub game_over_sound: Handle<AudioSource>,
+    pub door_thunk_sound: Handle<AudioSource>,
+    pub door_opening_sound: Handle<AudioSource>,
+    pub victory_sound: Handle<AudioSource>,
 }

@@ -3,6 +3,7 @@ use super::resources::GameContext;
 use super::states::GameplaySet;
 use super::states::{AppState, InGameState};
 use bevy::prelude::*;
+use bevy::time::Timer;
 
 // UI components
 #[derive(Component)]
@@ -11,6 +12,51 @@ struct LivesText;
 #[derive(Component)]
 struct ScoreText;
 
+#[derive(Component)]
+pub struct PopupMessage {
+    pub timer: Timer,
+}
+
+impl PopupMessage {
+    pub fn spawn(
+        commands: &mut Commands,
+        asset_server: &Res<AssetServer>,
+        message: &str,
+        duration: f32,
+    ) {
+        let font = asset_server.load("fonts/montserrat.ttf");
+        let text_style = TextStyle {
+            font: font.clone(),
+            font_size: 28.0,
+            color: Color::WHITE,
+            ..default()
+        };
+
+        commands
+            .spawn(NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    left: Val::Percent(50.0),
+                    top: Val::Percent(50.0),
+                    width: Val::Auto,
+                    height: Val::Auto,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                ..default()
+            })
+            .with_children(|parent| {
+                parent.spawn((
+                    TextBundle::from_section(message.to_string(), text_style.clone()),
+                    PopupMessage {
+                        timer: Timer::from_seconds(duration, TimerMode::Once),
+                    },
+                ));
+            });
+    }
+}
+
 pub struct GameUIPlugin;
 
 impl Plugin for GameUIPlugin {
@@ -18,7 +64,7 @@ impl Plugin for GameUIPlugin {
         app.add_systems(OnEnter(InGameState::Playing), setup_game_ui)
             .add_systems(
                 Update,
-                update_game_ui
+                (update_game_ui, update_popup_message)
                     .in_set(GameplaySet::Update)
                     .run_if(in_state(InGameState::Playing)),
             );
@@ -42,6 +88,7 @@ fn setup_game_ui(
             style: Style {
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::FlexStart,
                 align_items: AlignItems::FlexStart,
                 ..default()
@@ -79,6 +126,23 @@ fn update_game_ui(
         }
         for (mut text, _) in set.p1().iter_mut() {
             text.sections[0].value = format!("Score: {}", game_context.score);
+        }
+    }
+}
+
+fn update_popup_message(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Text, &mut PopupMessage)>,
+) {
+    for (entity, mut text, mut popup_message) in query.iter_mut() {
+        popup_message.timer.tick(time.delta());
+
+        if popup_message.timer.finished() {
+            commands.entity(entity).despawn();
+        } else {
+            let alpha = popup_message.timer.fraction_remaining();
+            text.sections[0].style.color.set_alpha(alpha);
         }
     }
 }

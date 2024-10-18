@@ -11,17 +11,17 @@ use bevy::{
     pbr::{PbrBundle, StandardMaterial},
     render::mesh::PlaneMeshBuilder,
 };
-use web_demos::DefaultPluginsWithCustomWindow;
 use web_demos::overball::components::*;
-use web_demos::overball::systems::*;
 use web_demos::overball::constants::*;
-use web_demos::overball::states::*;
-use web_demos::overball::resources::*;
+use web_demos::overball::game_over::GameOverPlugin;
+use web_demos::overball::game_ui::GameUIPlugin;
 use web_demos::overball::main_menu::MainMenuPlugin;
 use web_demos::overball::pause_menu::PauseMenuPlugin;
-use web_demos::overball::game_ui::GameUIPlugin;
-use web_demos::overball::game_over::GameOverPlugin;
+use web_demos::overball::resources::*;
+use web_demos::overball::states::*;
+use web_demos::overball::systems::*;
 use web_demos::overball::victory::VictoryPlugin;
+use web_demos::{overball::game_ui::PopupMessage, DefaultPluginsWithCustomWindow};
 
 // DEBUG
 // use web_demos::overball::util::*;
@@ -51,7 +51,6 @@ pub fn start_game() {
         // .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(DefaultPluginsWithCustomWindow)
-
         // My plugins
         .add_plugins(MainMenuPlugin)
         .add_plugins(PauseMenuPlugin)
@@ -74,7 +73,6 @@ pub fn start_game() {
             Update,
             check_audio_loaded.run_if(in_state(AppState::Loading)),
         )
-
         // Game state
         .add_systems(
             OnEnter(AppState::Game),
@@ -85,12 +83,7 @@ pub fn start_game() {
         )
         .add_systems(
             OnEnter(InGameState::Reset),
-            (
-                setup_map,
-                setup_player,
-                clear_context,
-            )
-                .in_set(GameplaySet::Setup),
+            (setup_map, setup_player, clear_context).in_set(GameplaySet::Setup),
         )
         .add_systems(
             Update,
@@ -98,11 +91,9 @@ pub fn start_game() {
                 // Player
                 move_player_when_pressing_keys,
                 check_player_out_of_bounds,
-
                 // Door
                 handle_door_collisions,
                 update_door_movement,
-
                 // Tile
                 detect_ball_on_tile,
                 check_winning_tile,
@@ -111,8 +102,7 @@ pub fn start_game() {
                 .run_if(in_state(InGameState::Playing)),
         )
         // Player Died
-        .add_systems(OnEnter(InGameState::PlayerDied), handle_player_death)
-    ;
+        .add_systems(OnEnter(InGameState::PlayerDied), handle_player_death);
 
     #[cfg(target_arch = "x86_64")]
     app.add_plugins(WorldInspectorPlugin::new());
@@ -123,30 +113,32 @@ pub fn start_game() {
 fn configure_system_sets(app: &mut App) {
     app.configure_sets(
         Update,
-        (
-            GameplaySet::Update
-                .run_if(in_state(AppState::Game))
-                .run_if(in_state(InGameState::Playing)),
-        ),
+        (GameplaySet::Update
+            .run_if(in_state(AppState::Game))
+            .run_if(in_state(InGameState::Playing)),),
     );
     app.configure_sets(OnEnter(AppState::Game), GameplaySet::Setup);
 }
 
 // Transition system to start game when we enter AppState::Game
-fn reset_transition(
-    mut next_state: ResMut<NextState<InGameState>>,
-) {
+fn reset_transition(mut next_state: ResMut<NextState<InGameState>>) {
     next_state.set(InGameState::Reset);
 }
 
 // Loading
 fn load_audio_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     let bg_music = asset_server.load("sounds/bg.mp3");
+    let door_thunk_sound = asset_server.load("sounds/door-thunk.wav");
+    let door_opening_sound = asset_server.load("sounds/door-opening.mp3");
     let game_over_sound = asset_server.load("sounds/game_over.wav");
+    let victory_sound = asset_server.load("sounds/victory.mp3");
 
     commands.insert_resource(AudioAssets {
         bg_music,
         game_over_sound,
+        door_thunk_sound,
+        door_opening_sound,
+        victory_sound,
     });
 }
 
@@ -192,25 +184,26 @@ fn setup_map(
         });
 
     // WinningTile Platform
-    commands.spawn((
-        Transform::from_xyz(15.0, 0.0, 0.0),
-        GlobalTransform::default(),
-        Collider::cuboid(5.0, 0.1, 2.5),
-        Restitution::coefficient(0.9),
-        InheritedVisibility::default(),
-        GameMap,
-    ))
-    .with_children(|parent| {
-        parent.spawn(PbrBundle {
-            mesh: meshes.add(PlaneMeshBuilder::from_size(Vec2::new(10.0, 5.0))),
-            material: materials.add(StandardMaterial {
-                base_color: Color::srgb(1.0, 1.0, 0.0),
+    commands
+        .spawn((
+            Transform::from_xyz(15.0, 0.0, 0.0),
+            GlobalTransform::default(),
+            Collider::cuboid(5.0, 0.1, 2.5),
+            Restitution::coefficient(0.9),
+            InheritedVisibility::default(),
+            GameMap,
+        ))
+        .with_children(|parent| {
+            parent.spawn(PbrBundle {
+                mesh: meshes.add(PlaneMeshBuilder::from_size(Vec2::new(10.0, 5.0))),
+                material: materials.add(StandardMaterial {
+                    base_color: Color::srgb(1.0, 1.0, 0.0),
+                    ..default()
+                }),
+                transform: Transform::from_xyz(0.0, 0.1, 0.0),
                 ..default()
-            }),
-            transform: Transform::from_xyz(0.0, 0.1, 0.0),
-            ..default()
+            });
         });
-    });
 
     // Winning Tile
     commands.spawn((
@@ -226,7 +219,6 @@ fn setup_map(
         WinningTile,
         GameMap,
     ));
-
 
     // Tiles
     for x in -5..=5 {
@@ -271,18 +263,20 @@ fn setup_map(
     ));
 
     // light
-    commands.spawn((PointLightBundle {
-        point_light: PointLight {
-            intensity: 100_000.0,
-            shadows_enabled: true,
+    commands.spawn((
+        PointLightBundle {
+            point_light: PointLight {
+                intensity: 100_000.0,
+                shadows_enabled: true,
+                ..default()
+            },
+            transform: Transform::from_xyz(4.0, 8.0, 4.0),
+
             ..default()
         },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-
-        ..default()
-    }, GameMap));
+        GameMap,
+    ));
 }
-
 
 fn setup_player(
     mut commands: Commands,
@@ -317,10 +311,13 @@ fn setup_player(
         .insert(ActiveEvents::COLLISION_EVENTS);
 
     // Player camera
-    commands.spawn((Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
-        ..default()
-    }, PlayerCamera));
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::NEG_Z),
+            ..default()
+        },
+        PlayerCamera,
+    ));
 
     game_state.set(AppState::Game);
     gameplay_state.set(InGameState::Playing);
@@ -336,9 +333,7 @@ fn setup_background_music(mut commands: Commands, audio_assets: Res<AudioAssets>
     });
 }
 
-fn clear_context(
-    mut context: ResMut<GameContext>,
-) {
+fn clear_context(mut context: ResMut<GameContext>) {
     context.reset();
 }
 
@@ -382,17 +377,50 @@ fn handle_door_collisions(
     context: Res<GameContext>,
     mut ball_query: Query<(&mut Ball, &Transform), With<Player>>,
     mut door_query: Query<(Entity, &Door)>,
+    asset_server: Res<AssetServer>,
+    audio_assets: Res<AudioAssets>,
 ) {
     for collision_event in collision_events.read() {
         if let CollisionEvent::Started(entity1, entity2, _) = collision_event {
             if let Ok((mut ball, ball_transform)) = ball_query.get_mut(*entity2) {
                 if let Ok((door_entity, door)) = door_query.get_mut(*entity1) {
                     ball.velocity = Vec3::ZERO;
-                    info!("Ball collided with door at position: {:?}", ball_transform.translation);
-                    if context.score > door.required_score {
-                        commands.entity(door_entity).insert(DoorMovement { speed: 1.0 });
+                    debug!(
+                        "Ball collided with door at position: {:?}",
+                        ball_transform.translation
+                    );
+                    // Door thunk sound
+                    commands.spawn(AudioBundle {
+                        source: audio_assets.door_thunk_sound.clone(),
+                        settings: PlaybackSettings {
+                            volume: Volume::new(0.2),
+                            ..default()
+                        },
+                    });
+
+                    // Check if the player has the required score to open the door
+                    if context.score >= door.required_score {
+                        commands.spawn(AudioBundle {
+                            source: audio_assets.door_opening_sound.clone(),
+                            settings: PlaybackSettings {
+                                volume: Volume::new(0.2),
+                                ..default()
+                            },
+                        });
+
+                        commands
+                            .entity(door_entity)
+                            .insert(DoorMovement { speed: 0.5 });
                     } else {
-                        // alert the player that they need more points
+                        PopupMessage::spawn(
+                            &mut commands,
+                            &asset_server,
+                            &format!(
+                                "You need a score of {} to open this door",
+                                door.required_score
+                            ),
+                            3.0,
+                        );
                     }
                 }
             }
@@ -413,8 +441,6 @@ fn update_door_movement(
     }
 }
 
-
-
 fn check_winning_tile(
     mut commands: Commands,
     time: Res<Time>,
@@ -422,6 +448,7 @@ fn check_winning_tile(
     winning_tile_query: Query<&Transform, With<WinningTile>>,
     mut timer_query: Query<(Entity, &mut WinningTileTimer)>,
     mut next_state: ResMut<NextState<InGameState>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     if let Ok(player_transform) = player_query.get_single() {
         let player_position = player_transform.translation;
@@ -430,12 +457,21 @@ fn check_winning_tile(
             let tile_position = winning_tile_transform.translation;
 
             // Check if the player is on the winning tile
-            if (player_position.x - tile_position.x).abs() < 2.5 &&
-               (player_position.z - tile_position.z).abs() < 5.0 {
+            if (player_position.x - tile_position.x).abs() < 2.5
+                && (player_position.z - tile_position.z).abs() < 5.0
+            {
                 // If the timer already exists, update it
                 if let Ok((entity, mut timer)) = timer_query.get_single_mut() {
                     timer.0.tick(time.delta());
                     if timer.0.finished() {
+                        commands.spawn(AudioBundle {
+                            source: audio_assets.victory_sound.clone(),
+                            settings: PlaybackSettings {
+                                volume: Volume::new(0.2),
+                                ..default()
+                            },
+                        });
+
                         next_state.set(InGameState::Victory);
                         commands.entity(entity).despawn(); // Remove the timer entity
                     }
