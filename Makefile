@@ -2,7 +2,6 @@
 # CMPT 485 - Presentation Demos
 # Makefile for building the website demos
 
-# Dwight would not be happy with this... I'm too lazy to make this work.
 DIST_DIR := dist
 BIND_DIR_NAME := binds
 WASM_TMP_DIR := $(DIST_DIR)/wasm
