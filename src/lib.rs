@@ -1,11 +1,17 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use bevy::prelude::*;
-use bevy::window::{Window, WindowPlugin, WindowTheme};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-pub mod overball;
 pub mod player;
+pub mod overball;
+
+pub fn get_window() -> Window {
+    Window {
+        canvas: Some("#demo_canvas".into()),
+        ..default()
+    }
+}
 
 pub struct DefaultPluginsWithCustomWindow;
 
@@ -15,9 +21,6 @@ impl Plugin for DefaultPluginsWithCustomWindow {
             #[cfg(target_arch = "wasm32")]
             primary_window: Some(Window {
                 canvas: Some("#game-window".into()),
-                prevent_default_event_handling: false,
-                window_theme: Some(WindowTheme::Dark),
-                fit_canvas_to_parent: true,
                 ..default()
             }),
             ..default()
