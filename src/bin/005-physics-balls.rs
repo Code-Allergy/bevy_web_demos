@@ -20,21 +20,24 @@ pub fn start_game() {
     App::new()
         .add_plugins(DefaultPluginsWithCustomWindow)
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_systems(Startup, setup)
         .add_plugins(PlayerPlugin)
+        .add_systems(Startup, setup)
+        .add_systems(Update, respawn_balls)
+
         .run();
 }
 
 const PLANE_SIZE: f32 = 20.0;
 const BALL_SIZE: f32 = 1.0;
+const BALL_HEIGHT: f32 = 10.0;
 
 
 fn setup(mut commands: Commands,
                  mut meshes: ResMut<Assets<Mesh>>,
                  mut materials: ResMut<Assets<StandardMaterial>>) {
+    // Plane Mesh
     commands.spawn(
         PbrBundle {
-            // mesh: meshes.add(Mesh::from(PlaneMeshBuilder::from_length(PLANE_SIZE))),
             mesh: meshes.add(Mesh::from(Cuboid {
                 half_size: Vec3::new(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0),
             })),
@@ -45,12 +48,8 @@ fn setup(mut commands: Commands,
             transform: Transform::from_xyz(0.0, 0.05, 0.0),
             ..default()
         })
-        .insert((Collider::cuboid(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0), Restitution::coefficient(0.9)));  // Collider size matching the plane
-
-    // // spawn_ball(&mut commands, &mut meshes, &mut materials, 16.0, rand::random(), rand::random());
-    for i in 0..1000 {
-        spawn_ball(&mut commands, &mut meshes, &mut materials, 16.0 + (i as f32 *0.01) * 4.0, rand::random(), rand::random());
-    }
+        .insert((Collider::cuboid(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0),
+                 Restitution::coefficient(0.9)));
 
     // Light
     commands.spawn(PointLightBundle {
@@ -123,7 +122,12 @@ fn setup(mut commands: Commands,
         ..default()
     })
         .insert(Collider::cuboid(half_plane_size, wall_height, wall_thickness));
+
+    spawn_balls(&mut commands, &mut meshes, &mut materials, 1000);
 }
+
+#[derive(Component, Default)]
+struct Ball;
 
 #[derive(Bundle, Default)]
 struct BallBundle {
@@ -134,30 +138,47 @@ struct BallBundle {
     velocity: Velocity,
     damping: Damping,
     friction: Friction,
+    ball: Ball,
 }
 
+fn respawn_balls(mut commands: Commands, query: Query<Entity, With<Ball>>, keyboard: Res<ButtonInput<KeyCode>>,
+                 mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
+    if keyboard.just_pressed(KeyCode::KeyR) {
+        for entity in query.iter() {
+            commands.entity(entity).despawn_recursive();
+        }
 
-fn spawn_ball(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>, height: f32, x: f32, z: f32) {
-    // Create the PbrBundle with Transform
-    let pbr_bundle = PbrBundle {
-        mesh: meshes.add(Mesh::from(Sphere { radius: BALL_SIZE / 2.0 })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.8, 0.2, 0.3),
-            metallic: 1.0,
-            perceptual_roughness: 0.0,
-            ..default()
-        }),
-        // The Transform will be added in the next line
-        transform: Transform::from_xyz(x, height, z),
-        ..default()
-    };
+        spawn_balls(&mut commands, &mut meshes, &mut materials, 1000);
+    }
+}
 
-    commands
-        .spawn(BallBundle {
+fn spawn_balls(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>, count: u32) {
+    let mut balls_vec: Vec<BallBundle> = Vec::with_capacity(count as usize);
+    for i in 0..count {
+        let x = rand::random();
+        let z = rand::random();
+        let height = BALL_HEIGHT + (i as f32 * 0.01) * 4.0;
+        let ball = BallBundle {
+            pbr_bundle: PbrBundle {
+                mesh: meshes.add(Mesh::from(Sphere { radius: BALL_SIZE / 2.0 })),
+                material: materials.add(StandardMaterial {
+                    base_color: Color::srgb(0.8, 0.2, 0.3),
+                    ..default()
+                }),
+                transform: Transform::from_xyz(x, height, z),
+                ..default()
+            },
             collider: Collider::ball(BALL_SIZE / 2.0),
             restitution: Restitution::coefficient(0.3),
             rigid_body: RigidBody::Dynamic,
-            pbr_bundle,
-            ..default()
-        });
+            velocity: Velocity::default(),
+            damping: Damping::default(),
+            friction: Friction::default(),
+            ball: Ball,
+        };
+
+        balls_vec.push(ball);
+    }
+
+    commands.spawn_batch(balls_vec);
 }
