@@ -9,14 +9,13 @@ edition = "2021"
 bevy_rapier3d = "0.27.0"
 rand = "0.8.5"
 wasm-bindgen = "0.2.92"
-bevy_hanabi = "0.12.2"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 bevy-inspector-egui = "0.26.0"
 
 [dependencies.bevy]
 version = "0.14.2"
-features = ["jpeg", "shader_format_glsl", "mp3", "wav"]
+features = ["jpeg", "mp3", "wav"]
 
 [profile.dev]
 opt-level = 1
