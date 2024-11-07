@@ -14,7 +14,7 @@ use web_demos::player::PlayerPlugin;
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("009-movable-objects.rs").to_string() }
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "Pickup Objects".to_string() }
+pub fn demo_name() -> String { "ECS: Pickup Objects".to_string() }
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
     start_game();

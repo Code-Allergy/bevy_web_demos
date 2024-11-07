@@ -4,7 +4,7 @@ use bevy::{prelude::*, render::mesh::VertexAttributeValues};
 use web_demos::{DefaultPluginsWithCustomWindow};
 
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "Assignment 1: Replication".to_string() }
+pub fn demo_name() -> String { "Assignment 1: Bevy Edition".to_string() }
 #[wasm_bindgen(js_name = demoDescription)]
 pub fn demo_description() -> String { "A replication of Assignment 1 in Bevy".to_string() }
 #[wasm_bindgen(js_name = sourceFile)]

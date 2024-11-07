@@ -18,15 +18,17 @@ impl Plugin for GameOverPlugin {
             (setup_game_over_ui, play_gameover_sound),
         )
         .add_systems(
-            Update,
-            handle_game_over_input.run_if(in_state(InGameState::GameOver)),
+            Update, (
+                handle_game_over_ui_input.run_if(in_state(InGameState::GameOver)),
+                handle_game_over_kb_input.run_if(in_state(InGameState::GameOver))
+            ),
         )
         .add_systems(OnExit(InGameState::GameOver), despawn_player_and_map);
     }
 }
 
 
-fn handle_game_over_input(
+fn handle_game_over_ui_input(
     mut commands: Commands,
     mut in_game_state: ResMut<NextState<InGameState>>,
     mut interaction_query: Query<
@@ -42,13 +44,7 @@ fn handle_game_over_input(
                 // Restart the game
                 // Remove the game over UI
                 *color = PRESSED_BUTTON.into();
-                for entity in game_over_ui.iter() {
-                    commands.entity(entity).despawn_recursive();
-                }
-
-                // Reset player lives
-                context.lives = PLAYER_LIVES;
-                in_game_state.set(InGameState::Reset);
+                reset_game(&mut commands, &mut in_game_state, &game_over_ui, &mut context);
             }
             Interaction::Hovered => {
                 *color = HOVERED_BUTTON.into();
@@ -57,6 +53,18 @@ fn handle_game_over_input(
                 *color = NORMAL_BUTTON.into();
             }
         }
+    }
+}
+
+fn handle_game_over_kb_input(
+    mut commands: Commands,
+    mut in_game_state: ResMut<NextState<InGameState>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    game_over_ui: Query<Entity, With<GameOverUI>>,
+    mut context: ResMut<GameContext>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        reset_game(&mut commands, &mut in_game_state, &game_over_ui, &mut context);
     }
 }
 
@@ -122,4 +130,17 @@ fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                     parent.spawn(TextBundle::from_section("Restart", text_style.clone()));
                 });
         });
+}
+
+fn reset_game(mut commands: &mut Commands,
+              mut in_game_state: &mut ResMut<NextState<InGameState>>,
+                  game_over_ui: &Query<Entity, With<GameOverUI>>,
+                  mut context: &mut ResMut<GameContext>,) {
+    for entity in game_over_ui.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    // Reset player lives
+    context.lives = PLAYER_LIVES;
+    in_game_state.set(InGameState::Reset);
 }

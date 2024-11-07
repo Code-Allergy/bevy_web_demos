@@ -23,7 +23,7 @@ impl Plugin for MainMenuPlugin {
             OnEnter(AppState::Title),
             (setup_main_menu_ui,).in_set(MainMenuSet::Setup),
         )
-        .add_systems(Update, (start_button_system,).in_set(MainMenuSet::Update))
+        .add_systems(Update, (start_button_system, keyboard_input_system).in_set(MainMenuSet::Update))
         .add_systems(
             OnExit(AppState::Title),
             (despawn_main_menu,).in_set(MainMenuSet::Cleanup),
@@ -143,5 +143,14 @@ fn start_button_system(
                 border_color.0 = Color::BLACK;
             }
         }
+    }
+}
+
+fn keyboard_input_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<NextState<AppState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        state.set(AppState::Game);
     }
 }

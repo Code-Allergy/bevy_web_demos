@@ -36,7 +36,7 @@ pub fn source_file() -> String {
 }
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String {
-    "A basic game from my childhood".to_string()
+    "Game: Elements of a game from my childhood".to_string()
 }
 fn main() {
     #[cfg(not(target_arch = "wasm32"))]
@@ -48,7 +48,6 @@ pub fn start_game() {
     let mut app = App::new();
     app
         // Plugins
-        // .add_plugins(RapierDebugRenderPlugin::default())
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(DefaultPluginsWithCustomWindow)
         // My plugins
@@ -78,7 +77,7 @@ pub fn start_game() {
             OnEnter(AppState::Game),
             (
                 reset_transition,
-                setup_background_music.before(reset_transition), // TODO we should have a method to disable audio
+                setup_background_music.before(reset_transition),
             ),
         )
         .add_systems(
@@ -142,7 +141,6 @@ fn load_audio_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
-// TODO change this
 fn check_audio_loaded(
     asset_server: Res<AssetServer>,
     audio_assets: Res<AudioAssets>,

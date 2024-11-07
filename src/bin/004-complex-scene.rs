@@ -6,7 +6,7 @@ use web_demos::{DefaultPluginsWithCustomWindow};
 use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = demoName)]
-pub fn demo_name() -> String { "Loading complex scene".to_string() }
+pub fn demo_name() -> String { "A complex scene".to_string() }
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("004-complex-scene.rs").to_string() }
 fn main() {

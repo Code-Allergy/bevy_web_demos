@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 use web_demos::{player::PlayerPlugin, DefaultPluginsWithCustomWindow};
 #[wasm_bindgen(js_name = demoName)]
 pub fn demo_name() -> String {
-    "Physics Demo - Ball Pit".to_string()
+    "Physics: Ball Pit".to_string()
 }
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("005-physics-balls.rs").to_string() }
