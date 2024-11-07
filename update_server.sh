@@ -15,7 +15,7 @@ mv target/source.zip dist
 mv target/source.tar.gz dist
 
 # Package the web app
-tar -czf dist.tar.gz -C dist .
+tar -czvf dist.tar.gz -C dist .
 
 # Copy the package to the server
 scp dist.tar.gz $SERVER_USER@$SERVER_IP:~
