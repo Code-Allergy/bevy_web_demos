@@ -5,7 +5,7 @@ SERVER_IP="vada.life"
 SERVER_PATH="/var/www/vada.life"
 
 # Build the app
-make RELEASE=1
+make RELEASE=true
 
 # Package the source code
 ./package.sh
