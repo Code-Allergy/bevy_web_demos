@@ -54,6 +54,9 @@
           # webgl builds
           binaryen
           wasm-bindgen-cli
+
+          # for packaging the source code
+          zip
         ];
         LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
       };
