@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::render::mesh::PlaneMeshBuilder;
 use bevy_rapier3d::prelude::*;
 use wasm_bindgen::prelude::*;
 use web_demos::{player::PlayerPlugin, DefaultPluginsWithCustomWindow};
@@ -27,9 +28,10 @@ pub fn start_game() {
         .run();
 }
 
-const PLANE_SIZE: f32 = 20.0;
+const PLANE_SIZE: f32 = 25.0;
 const BALL_SIZE: f32 = 1.0;
 const BALL_HEIGHT: f32 = 10.0;
+const TOTAL_BALLS: u32 = 2500;
 
 
 fn setup(mut commands: Commands,
@@ -38,13 +40,8 @@ fn setup(mut commands: Commands,
     // Plane Mesh
     commands.spawn(
         PbrBundle {
-            mesh: meshes.add(Mesh::from(Cuboid {
-                half_size: Vec3::new(PLANE_SIZE/2.0, 0.1, PLANE_SIZE/2.0),
-            })),
-            material: materials.add(StandardMaterial {
-                base_color: Color::srgb(1.0, 1.0, 1.0),  // Ground color
-                ..default()
-            }),
+            mesh: meshes.add(PlaneMeshBuilder::from_length(PLANE_SIZE)),
+            material: materials.add(Color::srgb(1.0, 1.0, 1.0)),  // Ground color
             transform: Transform::from_xyz(0.0, 0.05, 0.0),
             ..default()
         })
@@ -52,78 +49,22 @@ fn setup(mut commands: Commands,
                  Restitution::coefficient(0.9)));
 
     // Light
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 300_000.0,
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            color: Color::WHITE,
+            illuminance: light_consts::lux::OVERCAST_DAY,
             shadows_enabled: true,
+            shadow_depth_bias: 0.1,
+            shadow_normal_bias: 0.1,
             ..default()
         },
-        transform: Transform::from_xyz(0.0, 5.0, 0.0),
+        transform: Transform::from_xyz(0.0, 50.0, 0.0)
+            .looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
 
-    // Add colliders around the edges of the ground plane
-    let wall_thickness = 0.1;
-    let wall_height = 10000.0;
-    let half_plane_size = PLANE_SIZE / 2.0;
-
-    // Left wall
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid {
-            half_size: Vec3::new(wall_thickness, wall_height, half_plane_size),
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.5, 0.5, 0.5),
-            ..default()
-        }),
-        transform: Transform::from_xyz(-half_plane_size - wall_thickness, wall_height, 0.0),
-        ..default()
-    })
-        .insert(Collider::cuboid(wall_thickness, wall_height, half_plane_size));
-
-    // Right wall
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid {
-            half_size: Vec3::new(wall_thickness, wall_height, half_plane_size),
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.5, 0.5, 0.5),
-            ..default()
-        }),
-        transform: Transform::from_xyz(half_plane_size + wall_thickness, wall_height, 0.0),
-        ..default()
-    })
-        .insert(Collider::cuboid(wall_thickness, wall_height, half_plane_size));
-
-    // Front wall
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid {
-            half_size: Vec3::new(half_plane_size, wall_height, wall_thickness),
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.5, 0.5, 0.5),
-            ..default()
-        }),
-        transform: Transform::from_xyz(0.0, wall_height, half_plane_size + wall_thickness),
-        ..default()
-    })
-        .insert(Collider::cuboid(half_plane_size, wall_height, wall_thickness));
-
-    // Back wall
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid {
-            half_size: Vec3::new(half_plane_size, wall_height, wall_thickness),
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::srgb(0.5, 0.5, 0.5),
-            ..default()
-        }),
-        transform: Transform::from_xyz(0.0, wall_height, -half_plane_size - wall_thickness),
-        ..default()
-    })
-        .insert(Collider::cuboid(half_plane_size, wall_height, wall_thickness));
-
-    spawn_balls(&mut commands, &mut meshes, &mut materials, 1000);
+    spawn_walls(&mut commands, &mut meshes, &mut materials);
+    spawn_balls(&mut commands, &mut meshes, &mut materials, TOTAL_BALLS);
 }
 
 #[derive(Component, Default)]
@@ -148,7 +89,7 @@ fn respawn_balls(mut commands: Commands, query: Query<Entity, With<Ball>>, keybo
             commands.entity(entity).despawn_recursive();
         }
 
-        spawn_balls(&mut commands, &mut meshes, &mut materials, 1000);
+        spawn_balls(&mut commands, &mut meshes, &mut materials, TOTAL_BALLS);
     }
 }
 
@@ -181,4 +122,65 @@ fn spawn_balls(commands: &mut Commands, meshes: &mut ResMut<Assets<Mesh>>, mater
     }
 
     commands.spawn_batch(balls_vec);
+}
+
+#[derive(Debug)]
+struct WallConfig {
+    position: Vec3,
+    half_size: Vec3,
+}
+
+fn spawn_walls(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+) {
+    const WALL_THICKNESS: f32 = 0.1;
+    const WALL_HEIGHT: f32 = 10000.0;
+    let half_plane_size = PLANE_SIZE / 2.0;
+
+    let wall_configs = [
+        // Left wall
+        WallConfig {
+            position: Vec3::new(-half_plane_size - WALL_THICKNESS, WALL_HEIGHT, 0.0),
+            half_size: Vec3::new(WALL_THICKNESS, WALL_HEIGHT, half_plane_size),
+        },
+        // Right wall
+        WallConfig {
+            position: Vec3::new(half_plane_size + WALL_THICKNESS, WALL_HEIGHT, 0.0),
+            half_size: Vec3::new(WALL_THICKNESS, WALL_HEIGHT, half_plane_size),
+        },
+        // Front wall
+        WallConfig {
+            position: Vec3::new(0.0, WALL_HEIGHT, half_plane_size + WALL_THICKNESS),
+            half_size: Vec3::new(half_plane_size, WALL_HEIGHT, WALL_THICKNESS),
+        },
+        // Back wall
+        WallConfig {
+            position: Vec3::new(0.0, WALL_HEIGHT, -half_plane_size - WALL_THICKNESS),
+            half_size: Vec3::new(half_plane_size, WALL_HEIGHT, WALL_THICKNESS),
+        },
+    ];
+
+    let wall_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.5, 0.5, 0.5),
+        ..default()
+    });
+
+    for config in wall_configs {
+        commands
+            .spawn(PbrBundle {
+                mesh: meshes.add(Mesh::from(Cuboid {
+                    half_size: config.half_size,
+                })),
+                material: wall_material.clone(),
+                transform: Transform::from_translation(config.position),
+                ..default()
+            })
+            .insert(Collider::cuboid(
+                config.half_size.x,
+                config.half_size.y,
+                config.half_size.z,
+            ));
+    }
 }
