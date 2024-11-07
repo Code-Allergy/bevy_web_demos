@@ -25,7 +25,10 @@ fn main() {
 
 // BEVY CODE
 
-/* DefaultPluginWithCustomWindow:
+
+
+/* DefaultPluginWithCustomWindow Implementation:
+
    app.add_plugins(DefaultPlugins.set(WindowPlugin {
        #[cfg(target_arch = "wasm32")]
        primary_window: Some(Window {

@@ -66,12 +66,14 @@ fn setup(
     });
 }
 
+// System to move the cube up and down.
 fn move_cube_up_and_down(time: Res<Time>, mut query: Query<&mut Transform, With<Cube>>) {
     for mut transform in query.iter_mut() {
         transform.translation.y = time.elapsed_seconds().sin() / 2.0;
     }
 }
 
+// System to update the cube's color from full brightness to no brightness.
 fn update_colour(time: Res<Time>, 
     mut query: Query<(&Cube, &Handle<StandardMaterial>)>,
     mut materials: ResMut<Assets<StandardMaterial>>,) {
@@ -83,7 +85,7 @@ fn update_colour(time: Res<Time>,
     }
 }
 
-
+// System to rotate cube while space bar is pressed.
 fn rotate_cube(time: Res<Time>, mut query: Query<&mut Transform, With<Cube>>, keyboard_input: Res<ButtonInput<KeyCode>>) {
     if keyboard_input.pressed(KeyCode::Space) {
         for mut transform in query.iter_mut() {

@@ -37,6 +37,8 @@ fn setup(
         transform: Transform::from_xyz(0.0, 2.0, 4.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
+
+    // Lights
     commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 300_000.0,
@@ -47,6 +49,7 @@ fn setup(
         ..default()
     });
 
+    // Model
     commands.spawn(SceneBundle {
         scene: asset_server
             .load(GltfAssetLabel::Scene(0).from_asset("models/Avocado.glb")),

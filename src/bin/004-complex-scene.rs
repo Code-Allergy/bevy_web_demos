@@ -34,6 +34,7 @@ fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ) {
+    // Light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 300_000.0,
@@ -44,6 +45,7 @@ fn setup(
         ..default()
     });
 
+    // Model
     commands.spawn(SceneBundle {
         scene: asset_server
             .load(GltfAssetLabel::Scene(0).from_asset("models/ABeautifulGame/ABeautifulGame.gltf")),
