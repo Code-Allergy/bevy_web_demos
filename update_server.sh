@@ -11,8 +11,8 @@ make RELEASE=1
 ./package.sh
 
 # Move source packages into dist
-mv target/bevy_demos_cmpt485.zip dist
-mv target/bevy_demos_cmpt485.tar.gz dist
+mv target/source.zip dist
+mv target/source.tar.gz dist
 
 # Package the web app
 tar -czf dist.tar.gz -C dist .
