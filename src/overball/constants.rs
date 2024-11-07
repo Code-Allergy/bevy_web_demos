@@ -3,7 +3,7 @@ use bevy::color::Color;
 
 pub const MIN_X: f32 = -20.0;
 pub const MAX_X: f32 = 20.0;
-pub const MIN_Y: f32 = -10.0; // Keep Y > 0 to prevent falling out of the world
+pub const MIN_Y: f32 = -10.0;
 pub const MAX_Y: f32 = 10.0;
 pub const MIN_Z: f32 = -20.0;
 pub const MAX_Z: f32 = 20.0;

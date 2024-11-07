@@ -32,7 +32,7 @@ pub fn debug_in_game_state(
         *previous_state = Some(state.clone());
     }
 }
-/* A system that displays the events. */
+/* A system that displays the collision events. */
 pub fn display_events(
     mut collision_events: EventReader<CollisionEvent>,
     mut contact_force_events: EventReader<ContactForceEvent>,

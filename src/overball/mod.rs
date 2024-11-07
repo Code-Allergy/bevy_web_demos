@@ -9,6 +9,5 @@ pub mod util;
 pub mod main_menu;
 pub mod pause_menu;
 pub mod game_ui;
-pub mod player;
 pub mod game_over;
 pub mod victory;

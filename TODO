@@ -6,7 +6,9 @@ Done:
 5. Loading a Large Scene with Lots of Models/Complex models: DONE
 9. Post-Processing Effects (Bloom, Blur, etc.)
 11. Small 3D game incorporating the key mechanic from Overball
-
-TODO:
 10. Interactive Object Picking (Mouse or Keyboard Input)
+
+Additional:
+- Add space to skip the menu/game over restart screen
+
 

@@ -89,24 +89,19 @@ document.getElementById('backward').addEventListener('click', () => {
 });
 
 document.getElementById("dl-zip").addEventListener('click', async () => {
-    const response = await fetch("/source.zip");
-    const blob = await response.blob();
-    const downloadLink = document.createElement('a');
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = "bevy_demos_cmpt485.zip";
-    downloadLink.click();
-    URL.revokeObjectURL(downloadLink.href);
+    await downloadFile("bevy_demos_cmpt485.zip", "/source.zip");
 })
 
 document.getElementById("dl-tar").addEventListener('click', async () => {
-    const response = await fetch("/source.tar.gz");
-    const blob = await response.blob();
-    const downloadLink = document.createElement('a');
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = "bevy_demos_cmpt485.tar.gz";
-    downloadLink.click();
-    URL.revokeObjectURL(downloadLink.href);
+    await downloadFile("bevy_demos_cmpt485.tar.gz", "/source.tar.gz");
 })
+
+async function downloadFile(filename, url) {
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = filename;
+    downloadLink.click();
+}
 
 async function destroy() {
     if (wasmContext?.stopGame) {

@@ -71,7 +71,6 @@ fn play_gameover_sound(mut commands: Commands, audio_assets: Res<AudioAssets>) {
     });
 }
 
-// TODO
 fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/montserrat.ttf");
     let text_style = TextStyle {

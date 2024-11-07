@@ -76,10 +76,6 @@ pub fn detect_ball_on_tile(
     }
 }
 
-
-
-
-
 pub fn check_player_out_of_bounds(
     mut query: Query<(&mut Transform, &mut Ball), With<Player>>,
     mut next_state: ResMut<NextState<InGameState>>,
