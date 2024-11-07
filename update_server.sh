@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
+set -e # Exit on error
 # This does NOT build the app, it just updates the server with the current dist package.
 
 SERVER_USER="root"
 SERVER_IP="vada.life"
 SERVER_PATH="/var/www/vada.life"
+
+# Build the app
+make RELEASE=1
+
+# Package the source code
+./package.sh
+
+# Move source packages into dist
+mv target/bevy_demos_cmpt485.zip dist
+mv target/bevy_demos_cmpt485.tar.gz dist
 
 # Package the web app
 tar -czf dist.tar.gz -C dist .

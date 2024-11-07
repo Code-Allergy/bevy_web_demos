@@ -4,8 +4,8 @@
 list_file="package.list"
 
 # Output filenames for the archives
-zip_filename="target/bevy_demos_cmpt485.zip"
-tar_filename="target/bevy_demos_cmpt485.tar.gz"
+zip_filename="target/source.zip"
+tar_filename="target/source.tar.gz"
 
 # Check if the package.list file exists
 if [ ! -f "$list_file" ]; then

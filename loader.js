@@ -66,12 +66,6 @@ async function loadWasmModule(modulePath) {
     }
 }
 
-function resetCanvas() {
-    const oldCanvas = document.querySelector('canvas');
-    const gl = oldCanvas.getContext('webgl') || oldCanvas.getContext('experimental-webgl');
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-}
-
 async function loadCurrentModule() {
     updateURLWithModuleIndex(currentModuleIndex);
     if (visitedModules.has(currentModuleIndex)) {
@@ -93,6 +87,26 @@ document.getElementById('backward').addEventListener('click', () => {
     currentModuleIndex = (currentModuleIndex - 1 + wasm_modules.length) % wasm_modules.length;
     loadCurrentModule();
 });
+
+document.getElementById("dl-zip").addEventListener('click', async () => {
+    const response = await fetch("/source.zip");
+    const blob = await response.blob();
+    const downloadLink = document.createElement('a');
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.download = "bevy_demos_cmpt485.zip";
+    downloadLink.click();
+    URL.revokeObjectURL(downloadLink.href);
+})
+
+document.getElementById("dl-tar").addEventListener('click', async () => {
+    const response = await fetch("/source.tar.gz");
+    const blob = await response.blob();
+    const downloadLink = document.createElement('a');
+    downloadLink.href = URL.createObjectURL(blob);
+    downloadLink.download = "bevy_demos_cmpt485.tar.gz";
+    downloadLink.click();
+    URL.revokeObjectURL(downloadLink.href);
+})
 
 async function destroy() {
     if (wasmContext?.stopGame) {

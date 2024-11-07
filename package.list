@@ -7,3 +7,4 @@ Makefile
 rust-toolchain.toml
 src
 style.css
+README

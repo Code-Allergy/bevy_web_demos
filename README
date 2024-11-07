@@ -1,0 +1,33 @@
+CMPT485 Presentation Demos - Bevy Game Engine
+By: Ryan Schaffer
+
+This repository contains the demos for my presentation on the Bevy game engine.
+The presentation is a brief overview of the Bevy game engine and its features,
+as well as a demonstration of some of the features of the engine.
+
+The demos are as follows:
+001-basic-mesh - A demo that shows how to create a window and draw a primitive cube mesh.
+002-basic-models - A demo that shows how to load and draw a 3D model.
+003-assignment-1 - A demo recreating the first assignment from CMPT485.
+004-complex-scene - A demo that shows loading a complex scene with multiple models and materials.
+005-physics-balls - A demo that shows how to add physics to a scene with Bevy's rapier physics plugin.
+008-post-processing - A demo that shows custom pipelines using a chromatic aberration fragment shader.
+009-movable-object - A demo that shows interactable objects using Bevy's ECS system.
+010-overball-game - A demo that shows a simple game where the player
+                        controls a ball to roll over tiles and open doors.
+
+# Running the Demos
+To run the demos, you will need to have Rust installed.
+You can install Rust by following the instructions at https://www.rust-lang.org/tools/install.
+
+To build and run a demo locally on your system, navigate to the root directory and run the following command:
+cargo run --bin <demo-name>
+
+For example, to run the basic mesh demo, you would run:
+cargo run --bin 001-basic-mesh
+
+If you would like to build the website yourself (for whatever reason), you can run the following command:
+make RELEASE=1
+
+You can also build and serve the website locally in dev mode by running:
+make serve
