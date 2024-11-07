@@ -1,3 +1,4 @@
+use bevy::audio::{PlaybackMode, Volume};
 use bevy::prelude::*;
 use super::components::*;
 use super::resources::*;
@@ -130,4 +131,110 @@ pub fn despawn_player_and_map(
     for entity in map_query.iter() {
         commands.entity(entity).despawn_recursive();
     }
+}
+
+// Loading
+pub fn load_audio_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let bg_music = asset_server.load("sounds/bg.mp3");
+    let door_thunk_sound = asset_server.load("sounds/door-thunk.wav");
+    let door_opening_sound = asset_server.load("sounds/door-opening.mp3");
+    let game_over_sound = asset_server.load("sounds/game_over.wav");
+    let victory_sound = asset_server.load("sounds/victory.mp3");
+
+    commands.insert_resource(AudioAssets {
+        bg_music,
+        game_over_sound,
+        door_thunk_sound,
+        door_opening_sound,
+        victory_sound,
+    });
+}
+
+pub fn check_assets_loaded(
+    asset_server: Res<AssetServer>,
+    audio_assets: Res<AudioAssets>,
+    ball_asset: Res<BallAsset>,
+    mut game_state: ResMut<NextState<AppState>>,
+) {
+    if asset_server.get_load_state(&audio_assets.bg_music) == Some(bevy::asset::LoadState::Loaded)
+        && asset_server.get_load_state(&audio_assets.game_over_sound) == Some(bevy::asset::LoadState::Loaded)
+        && asset_server.get_load_state(&ball_asset.model) == Some(bevy::asset::LoadState::Loaded)
+    {
+        game_state.set(AppState::Title);
+    }
+}
+
+pub fn load_ball_assets(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    // Load and store the handle
+    let model = asset_server.load("models/Overball.glb#Scene0");
+
+    commands.insert_resource(BallAsset { model });
+}
+
+pub fn check_winning_tile(
+    mut commands: Commands,
+    time: Res<Time>,
+    player_query: Query<&Transform, With<Player>>,
+    winning_tile_query: Query<&Transform, With<WinningTile>>,
+    mut timer_query: Query<(Entity, &mut WinningTileTimer)>,
+    mut next_state: ResMut<NextState<InGameState>>,
+    audio_assets: Res<AudioAssets>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        let player_position = player_transform.translation;
+
+        for winning_tile_transform in winning_tile_query.iter() {
+            let tile_position = winning_tile_transform.translation;
+
+            // Check if the player is on the winning tile
+            if (player_position.x - tile_position.x).abs() < 2.5
+                && (player_position.z - tile_position.z).abs() < 5.0
+            {
+                // If the timer already exists, update it
+                if let Ok((entity, mut timer)) = timer_query.get_single_mut() {
+                    timer.0.tick(time.delta());
+                    if timer.0.finished() {
+                        commands.spawn(AudioBundle {
+                            source: audio_assets.victory_sound.clone(),
+                            settings: PlaybackSettings {
+                                volume: Volume::new(0.2),
+                                ..default()
+                            },
+                        });
+
+                        next_state.set(InGameState::Victory);
+                        commands.entity(entity).despawn(); // Remove the timer entity
+                    }
+                } else {
+                    // If the timer doesn't exist, create it
+                    commands.spawn(WinningTileTimer(Timer::from_seconds(2.0, TimerMode::Once)));
+                }
+                return;
+            }
+        }
+    }
+
+    // If the player is not on the winning tile, reset the timer
+    if let Ok((entity, _)) = timer_query.get_single() {
+        commands.entity(entity).despawn();
+    }
+}
+
+pub fn setup_background_music(mut commands: Commands, audio_assets: Res<AudioAssets>) {
+    commands.spawn(AudioBundle {
+        source: audio_assets.bg_music.clone(),
+        settings: PlaybackSettings {
+            volume: Volume::new(0.2),
+            mode: PlaybackMode::Loop,
+            ..default()
+        },
+        
+    });
+}
+
+pub fn clear_context(mut context: ResMut<GameContext>) {
+    context.reset();
 }

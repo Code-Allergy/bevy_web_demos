@@ -43,6 +43,8 @@ fn main() {
     start_game();
 }
 
+// Bevy code
+
 #[wasm_bindgen(js_name = startGame)]
 pub fn start_game() {
     let mut app = App::new();
@@ -67,10 +69,10 @@ pub fn start_game() {
     // Add systems to sets
     app
         // Loading state
-        .add_systems(OnEnter(AppState::Loading), load_audio_assets)
+        .add_systems(OnEnter(AppState::Loading), (load_audio_assets, load_ball_assets))
         .add_systems(
             Update,
-            check_audio_loaded.run_if(in_state(AppState::Loading)),
+            check_assets_loaded.run_if(in_state(AppState::Loading)),
         )
         // Game state
         .add_systems(
@@ -124,42 +126,12 @@ fn reset_transition(mut next_state: ResMut<NextState<InGameState>>) {
     next_state.set(InGameState::Reset);
 }
 
-// Loading
-fn load_audio_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let bg_music = asset_server.load("sounds/bg.mp3");
-    let door_thunk_sound = asset_server.load("sounds/door-thunk.wav");
-    let door_opening_sound = asset_server.load("sounds/door-opening.mp3");
-    let game_over_sound = asset_server.load("sounds/game_over.wav");
-    let victory_sound = asset_server.load("sounds/victory.mp3");
-
-    commands.insert_resource(AudioAssets {
-        bg_music,
-        game_over_sound,
-        door_thunk_sound,
-        door_opening_sound,
-        victory_sound,
-    });
-}
-
-fn check_audio_loaded(
-    asset_server: Res<AssetServer>,
-    audio_assets: Res<AudioAssets>,
-    mut game_state: ResMut<NextState<AppState>>,
-) {
-    if asset_server.get_load_state(&audio_assets.bg_music) == Some(bevy::asset::LoadState::Loaded)
-        && asset_server.get_load_state(&audio_assets.game_over_sound)
-            == Some(bevy::asset::LoadState::Loaded)
-    {
-        game_state.set(AppState::Title);
-    }
-}
-
 fn setup_map(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    // flat plane for testing
+    // Flat map
     commands
         .spawn((
             Transform::default(),
@@ -203,7 +175,7 @@ fn setup_map(
             });
         });
 
-    // Winning Tile
+    // WinningTile
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(PlaneMeshBuilder::from_length(4.0)),
@@ -278,8 +250,7 @@ fn setup_map(
 
 fn setup_player(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    ball_asset: Res<BallAsset>,
     mut game_state: ResMut<NextState<AppState>>,
     mut gameplay_state: ResMut<NextState<InGameState>>,
 ) {
@@ -293,13 +264,12 @@ fn setup_player(
                 velocity: ball_properties.velocity,
                 radius: ball_properties.radius,
             },
-            pbr_bundle: PbrBundle {
-                mesh: meshes.add(Mesh::from(Sphere::new(ball_properties.radius * 2.0))),
-                material: materials.add(StandardMaterial {
-                    base_color: Color::srgb(0.8, 0.0, 0.0),
+            scene_bundle: SceneBundle {
+                scene: ball_asset.model.clone(),
+                transform: Transform {
+                    translation: ball_properties.position,
                     ..default()
-                }),
-                transform: Transform::from_xyz(0.0, ball_properties.radius * 2.0, 0.0),
+                },
                 ..default()
             },
             collider: Collider::ball(ball_properties.radius * 2.0),
@@ -319,49 +289,6 @@ fn setup_player(
 
     game_state.set(AppState::Game);
     gameplay_state.set(InGameState::Playing);
-}
-
-fn setup_background_music(mut commands: Commands, audio_assets: Res<AudioAssets>) {
-    commands.spawn(AudioBundle {
-        source: audio_assets.bg_music.clone(),
-        settings: PlaybackSettings {
-            volume: Volume::new(0.2),
-            ..default()
-        },
-    });
-}
-
-fn clear_context(mut context: ResMut<GameContext>) {
-    context.reset();
-}
-
-// BEVY CODE
-
-#[derive(Debug)]
-struct BallProperties {
-    radius: f32,
-    position: Vec3,
-    velocity: Vec3,
-}
-
-impl Default for BallProperties {
-    fn default() -> Self {
-        BallProperties {
-            radius: 0.2,
-            position: Vec3::new(0.0, 1.0, 0.0),
-            velocity: Vec3::new(0.0, 0.0, 0.0),
-        }
-    }
-}
-
-#[derive(Bundle)]
-struct PlayerBundle {
-    player: Player,
-    ball: Ball,
-    pbr_bundle: PbrBundle,
-    collider: Collider,
-    restitution: Restitution,
-    rigid_body: RigidBody,
 }
 
 #[derive(Component)]
@@ -439,51 +366,4 @@ fn update_door_movement(
     }
 }
 
-fn check_winning_tile(
-    mut commands: Commands,
-    time: Res<Time>,
-    player_query: Query<&Transform, With<Player>>,
-    winning_tile_query: Query<&Transform, With<WinningTile>>,
-    mut timer_query: Query<(Entity, &mut WinningTileTimer)>,
-    mut next_state: ResMut<NextState<InGameState>>,
-    audio_assets: Res<AudioAssets>,
-) {
-    if let Ok(player_transform) = player_query.get_single() {
-        let player_position = player_transform.translation;
 
-        for winning_tile_transform in winning_tile_query.iter() {
-            let tile_position = winning_tile_transform.translation;
-
-            // Check if the player is on the winning tile
-            if (player_position.x - tile_position.x).abs() < 2.5
-                && (player_position.z - tile_position.z).abs() < 5.0
-            {
-                // If the timer already exists, update it
-                if let Ok((entity, mut timer)) = timer_query.get_single_mut() {
-                    timer.0.tick(time.delta());
-                    if timer.0.finished() {
-                        commands.spawn(AudioBundle {
-                            source: audio_assets.victory_sound.clone(),
-                            settings: PlaybackSettings {
-                                volume: Volume::new(0.2),
-                                ..default()
-                            },
-                        });
-
-                        next_state.set(InGameState::Victory);
-                        commands.entity(entity).despawn(); // Remove the timer entity
-                    }
-                } else {
-                    // If the timer doesn't exist, create it
-                    commands.spawn(WinningTileTimer(Timer::from_seconds(2.0, TimerMode::Once)));
-                }
-                return;
-            }
-        }
-    }
-
-    // If the player is not on the winning tile, reset the timer
-    if let Ok((entity, _)) = timer_query.get_single() {
-        commands.entity(entity).despawn();
-    }
-}

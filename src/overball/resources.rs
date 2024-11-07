@@ -35,3 +35,8 @@ pub struct AudioAssets {
     pub door_opening_sound: Handle<AudioSource>,
     pub victory_sound: Handle<AudioSource>,
 }
+
+#[derive(Resource)]
+pub struct BallAsset {
+    pub model: Handle<Scene>,
+}
