@@ -1,11 +1,9 @@
 use bevy::app::{App, Startup};
 use bevy::asset::Assets;
 use bevy::color::Color;
-use bevy::DefaultPlugins;
-use bevy::input::mouse::MouseButtonInput;
 use bevy::math::Vec3;
 use bevy::pbr::{PbrBundle, StandardMaterial};
-use bevy::render::mesh::{PlaneMeshBuilder, SphereMeshBuilder, VertexAttributeValues};
+use bevy::render::mesh::PlaneMeshBuilder;
 
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
@@ -214,9 +212,9 @@ fn pickup_detection(
 // Handle pickup intent and transition to picked up state
 fn handle_pickup(
     mut commands: Commands,
-    mut query: Query<(Entity, &Transform, &Velocity), With<PickupIntent>>,
+    mut query: Query<(Entity, &Velocity), With<PickupIntent>>,
 ) {
-    for (entity, transform, velocity) in query.iter_mut() {
+    for (entity, velocity) in query.iter_mut() {
         commands.entity(entity)
             .remove::<PickupIntent>()
             .insert(PickedUp {
@@ -229,7 +227,7 @@ fn handle_pickup(
 // Handle release intent and transition to regular state
 fn handle_release(
     mut commands: Commands,
-    mut query: Query<(Entity, &PickedUp), With<ReleaseIntent>>,
+    query: Query<(Entity, &PickedUp), With<ReleaseIntent>>,
 ) {
     for (entity, picked_up) in query.iter() {
         let release_velocity = picked_up.previous_velocity.clamp_length_max(MAX_RELEASE_SPEED);
@@ -274,7 +272,7 @@ fn update_object_colors(
     )>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (mut material_handle, pickable, picked_up, map) in query.iter_mut() {
+    for (material_handle, pickable, picked_up, map) in query.iter_mut() {
         // Skip recolouring map, only colour pickable and picked up objects
         if map.is_some() {
             continue;

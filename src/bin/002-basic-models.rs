@@ -1,14 +1,8 @@
 use bevy::app::{App, Startup};
-use bevy::asset::Assets;
-use bevy::color::Color;
-use bevy::DefaultPlugins;
 use bevy::math::Vec3;
-use bevy::pbr::{PbrBundle, StandardMaterial};
 use bevy::prelude::*;
-use bevy::render::mesh::VertexAttributeValues;
 use wasm_bindgen::prelude::wasm_bindgen;
 use web_demos::{DefaultPluginsWithCustomWindow};
-use web_demos::player::PlayerPlugin;
 
 #[wasm_bindgen(js_name = sourceFile)]
 pub fn source_file() -> String { include_str!("002-basic-models.rs").to_string() }

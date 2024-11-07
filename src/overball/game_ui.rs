@@ -1,7 +1,6 @@
-use super::constants::PLAYER_LIVES;
 use super::resources::GameContext;
 use super::states::GameplaySet;
-use super::states::{AppState, InGameState};
+use super::states::InGameState;
 use bevy::prelude::*;
 use bevy::time::Timer;
 
