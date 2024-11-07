@@ -132,10 +132,10 @@ fn setup_game_over_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         });
 }
 
-fn reset_game(mut commands: &mut Commands,
-              mut in_game_state: &mut ResMut<NextState<InGameState>>,
+fn reset_game(commands: &mut Commands,
+              in_game_state: &mut ResMut<NextState<InGameState>>,
                   game_over_ui: &Query<Entity, With<GameOverUI>>,
-                  mut context: &mut ResMut<GameContext>,) {
+                  context: &mut ResMut<GameContext>,) {
     for entity in game_over_ui.iter() {
         commands.entity(entity).despawn_recursive();
     }
